@@ -122,6 +122,12 @@ site, zoom 6–19):
 npm run check:tiles
 ```
 
+Unit tests (Node's built-in `node:test`, no dependencies):
+
+```bash
+npm test
+```
+
 The script uses only Node's built-in `fetch`, sleeps between requests, and prints
 HTTP status, content type, byte size and PNG dimensions for each tile.
 
@@ -149,7 +155,7 @@ button in the topbar renders it, together with the assumptions table.
 1. Click **Set start**, then click the map.
 2. Click **Add stop** for each intermediate science stop, then click the map.
 3. Click **Set destination**, then click the map.
-4. Click **Calculate route**.
+4. Click **Plan route**.
 
 The route panel shows distance, ascent, descent, maximum slope and the Tobler
 time estimate (with the assumed suit speed factor). A small SVG shows the
@@ -339,5 +345,7 @@ based and must not be used.
 
 ## Next step
 
-F5, F6, F8 and F9 are done. F10, F11, F13, F14 and F15 are not started. No git
-repository is initialized, and no commits were made.
+F1–F9 and F12 are implemented. F10, F11, F13, F14 and F15 are not started.
+The repository is initialized on GitHub (LeonAntGon/marswalk-planner) with
+commits on `main`. Pending work: public deployment (Vercel/Netlify) and the
+NASA Space Apps submission checklist.
