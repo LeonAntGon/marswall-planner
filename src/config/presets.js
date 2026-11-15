@@ -12,6 +12,16 @@ export const ROUTE_PRESETS = {
     start: { lat: LANDING_SITE.lat, lon: LANDING_SITE.lon },
     destination: { lat: 18.45272753, lon: 77.40833585 },
   },
+  landingToBrightAngel: {
+    id: 'landing-bright-angel',
+    label: 'Landing → Bright Angel (2 science stops)',
+    start: { lat: LANDING_SITE.lat, lon: LANDING_SITE.lon },
+    destination: { lat: 18.4974844, lon: 77.3051909 },
+    stops: [
+      { name: 'Séítah', lat: 18.43254788, lon: 77.44068664 },
+      { name: 'Margin unit (carbonates), entry', lat: 18.48328845, lon: 77.35070429 },
+    ],
+  },
 };
 
 export const TRAVERSE_URL = '/data/traverse.geojson';

@@ -176,7 +176,7 @@ Recommended: the minimum plus F5, F8, F9.
 
 ### F1 verification notes
 
-- `npm run build` succeeds (50 modules, 367.61 kB JS, 34.95 kB CSS, 3.65 kB A* worker, 3.40 kB walkback worker).
+- `npm run build` succeeds (51 modules, 378.77 kB JS, 42.05 kB CSS, 3.65 kB A* worker, 3.40 kB walkback worker).
 - Headless Chrome check: 4 base radios and 1 overlay checkbox; default gray
   checked; zoom 12; marker popup exact text; no page errors.
 - MOLA hillshade has native tiles only at z0-z6; its URL is unchanged and
@@ -307,5 +307,5 @@ Recommended: the minimum plus F5, F8, F9.
 
 ## Next step
 
-F5, F6, F8 and F9 are done. F10, F11, F13, F14 and F15 are not started. No git
-repository is initialized and no commits were made.
+F5, F6, F8 and F9 plus the UX/UI Tiers 1-4 are done. F10, F11, F13, F14 and
+F15 are not started. No git repository is initialized and no commits were made.

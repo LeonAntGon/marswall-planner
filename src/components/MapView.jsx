@@ -12,7 +12,7 @@ const COVERAGE_NOTE = 'Jezero detail layers only cover the crater area.';
 export default function MapView() {
   const containerRef = useRef(null);
   const mapRef = useRef(null);
-  const { setMap } = useMap();
+  const { setMap, setLayers } = useMap();
   const { gridData } = useRoute();
   const [mapGrid, setMapGrid] = useState(null);
   const [status, setStatus] = useState([]);
@@ -100,6 +100,16 @@ export default function MapView() {
     const baseLayers = {};
     const overlays = {};
 
+    const fallbackDefinition = LAYERS.find((def) => def.id === 'opm-basemap');
+    if (fallbackDefinition) {
+      L.tileLayer(fallbackDefinition.url, {
+        ...fallbackDefinition.options,
+        noWrap: true,
+        attribution: fallbackDefinition.attribution,
+        zIndex: 0,
+      }).addTo(map);
+    }
+
     for (const def of LAYERS) {
       if (!def.url) {
         if (!warnedMissingUrl.has(def.id)) {
@@ -115,6 +125,7 @@ export default function MapView() {
         ...def.options,
         noWrap: true,
         attribution: def.attribution,
+        zIndex: 200,
       });
       const state = { def, layer, errors: 0 };
       layerStates.set(def.id, state);
@@ -140,16 +151,27 @@ export default function MapView() {
       }
     }
 
-    L.control
-      .layers(baseLayers, overlays, {
-        position: 'topright',
-        collapsed: false,
-      })
-      .addTo(map);
+    setLayers({ baseLayers, overlays });
+
+    // Keep the UX default explicit; the declarative flag is still retained in
+    // layers.js for any future layer-list consumer.
+    const defaultBase = baseLayers['Jezero HiRISE color (25 cm)'];
+    console.info('[MapView] default base', {
+      keys: Object.keys(baseLayers),
+      found: Boolean(defaultBase),
+      has: defaultBase ? map.hasLayer(defaultBase) : null,
+    });
+    if (defaultBase && !map.hasLayer(defaultBase)) defaultBase.addTo(map);
 
     L.circleMarker([LANDING_SITE.lat, LANDING_SITE.lon], LANDING_MARKER_STYLE)
       .addTo(map)
-      .bindPopup('Octavia E. Butler Landing (Perseverance, Mars 2020)');
+      .bindPopup('Octavia E. Butler Landing (Perseverance, Mars 2020)')
+      .bindTooltip('Landing site', {
+        permanent: true,
+        direction: 'top',
+        offset: [0, -8],
+        className: 'landing-label',
+      });
 
     let overviewActive = false;
 
@@ -161,6 +183,16 @@ export default function MapView() {
       const minZoom = Math.floor(map.getBoundsZoom(paddedBounds));
       map.setMinZoom(minZoom);
       if (map.getZoom() < minZoom) map.setZoom(minZoom);
+    };
+
+    const fitGrid = () => {
+      const sidebar = container.closest('.map-shell')?.querySelector('.route-panel');
+      const sidebarWidth = sidebar?.getBoundingClientRect().width || 0;
+      map.fitBounds(gridBounds, {
+        padding: [20, 20],
+        paddingTopLeft: [sidebarWidth + 20, 20],
+        animate: false,
+      });
     };
 
     const enterOverview = () => {
@@ -175,10 +207,7 @@ export default function MapView() {
       overviewActive = false;
       setOverview(false);
       map.setMaxBounds(paddedBounds);
-      map.fitBounds(gridBounds, {
-        padding: [20, 20],
-        animate: false,
-      });
+      fitGrid();
       updateMinZoom();
     };
 
@@ -187,10 +216,7 @@ export default function MapView() {
     rafId = requestAnimationFrame(() => {
       if (disposed) return;
       map.invalidateSize();
-      map.fitBounds(gridBounds, {
-        padding: [20, 20],
-        animate: false,
-      });
+      fitGrid();
       updateMinZoom();
     });
 
@@ -204,11 +230,15 @@ export default function MapView() {
       map.remove();
       mapRef.current = null;
       viewRef.current = null;
+      setLayers(null);
       setMap(null);
     };
-  }, [mapGrid, setMap]);
+  }, [mapGrid, setLayers, setMap]);
 
   const showCoverageNote = status.some((row) => row.id.startsWith('m20-'));
+  const debug =
+    typeof window !== 'undefined' &&
+    new URLSearchParams(window.location.search).get('debug') === '1';
 
   return (
     <div className="map-wrap">
@@ -236,7 +266,7 @@ export default function MapView() {
       >
         {overview ? 'Back to Jezero' : 'Global overview'}
       </button>
-      <aside className="tile-status" aria-live="polite">
+      {debug && <aside className="tile-status" aria-live="polite">
         <div className="tile-status__title">Tile status</div>
         {status.length === 0 ? (
           <div className="tile-status__empty">No active tile layers</div>
@@ -261,7 +291,7 @@ export default function MapView() {
         {showCoverageNote && (
           <div className="tile-status__note">{COVERAGE_NOTE}</div>
         )}
-      </aside>
+      </aside>}
     </div>
   );
 }

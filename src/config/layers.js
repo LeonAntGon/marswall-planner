@@ -56,7 +56,6 @@ export const LAYERS = [
     id: 'm20-gray',
     label: 'Jezero HiRISE grayscale (25 cm)',
     kind: 'base',
-    default: true,
     url: 'https://mars.nasa.gov/mmgis-maps/M20/Layers/JEZ_hirise_soc_007_orthoMosaic_25cm_Ortho_blend120/{z}/{x}/{y}.png',
     options: {
       tms: true,
@@ -79,12 +78,17 @@ export const LAYERS = [
     id: 'm20-rgb',
     label: 'Jezero HiRISE color (25 cm)',
     kind: 'base',
+    default: true,
     url: 'https://mars.nasa.gov/mmgis-maps/M20/Layers/M20_HiRISE_RGB_mosaic_25cm_v4p2/{z}/{x}/{y}.png',
     options: {
       tms: true,
       minZoom: 10,
       maxZoom: 19,
       maxNativeZoom: 18,
+      bounds: [
+        [18.306796, 77.223018],
+        [18.669355, 77.583908],
+      ],
     },
     attribution: 'NASA/JPL-Caltech/University of Arizona',
     sourceId: 'm20-map',
@@ -96,7 +100,7 @@ export const LAYERS = [
     id: 'm20-placenames',
     label: 'M20 place names',
     kind: 'overlay',
-    default: true,
+    default: false,
     url: 'https://mars.nasa.gov/mmgis-maps/M20/Layers/M20_Placenames_175k_800dpi/{z}/{x}/{y}.png',
     options: {
       tms: true,
@@ -130,6 +134,6 @@ export const SLOPE_OVERLAY = {
   label: 'Slope (20 m)',
   url: '/data/slope.png',
   gridUrl: '/data/grid.json',
-  defaultOpacity: 0.6,
+  defaultOpacity: 0.55,
   sourceId: 'd1-ctx-dtm',
 };

@@ -284,3 +284,24 @@ WHERE FROM: D1 slope.bin, D5 clipped traverse/waypoints, F8 comparison inputs
 HOW VERIFIED: 20 m resampling of clipped traverse and route, nearest slope cell. Three Forks: rover mean/median/max 4.90/3.41/19.88 deg, >10/20 deg 14.5/0.0%; our route 2.01/1.72/6.73 deg, >10/20 deg 0.0/0.0%. Bright Angel: rover same 4.90/3.41/19.88 deg, 14.5/0.0%; our route 2.54/2.09/15.77 deg, 1.0/0.0%. Rover/our length ratio 5.38x (Three Forks) and 2.88x (Bright Angel), with the note that rover length includes science detours and exploration. Existing overlap numbers retained: Three Forks 400/359/870 m and 5.3/13.7/32.8% within 50/100/200 m; Bright Angel 159/109/630 m and 18.9/47.2/73.2%.
 USED IN: src/lib/compare.js, src/components/RoutePanel.jsx, src/config/assumptions.js, src/styles.css
 NOTE: No new external source. comparisonSlopeBandsDeg = [10, 20] added as an assumption; F12 is 24 sources / 22 assumptions. A* 221.4 ms and walkback 1153.9 ms in the map/F8 regression; under 2 s.
+
+[2026-11-15 13:44] FEATURE: F1
+WHAT: Tier 1 UX/UI pass for first-load map presentation
+WHERE FROM: Existing D1 grid, D5 science stops, D8 tile layers and existing project configuration
+HOW VERIFIED: Production build: 50 modules, 369.34 kB JS, 35.47 kB CSS, A* 3.40 kB and walkback 3.40 kB. npm run preview: default M20 HiRISE color selected; OPM fallback tiles loaded underneath; no Tile status panel without ?debug=1; slope overlay enabled at 55% with below-10-degrees transparent; dashed planning outline and label visible; six permanent science labels plus Landing site visible; 68 loaded tile images, 6 markers, 402 traverse paths and no console/page errors. Existing F8/F9 regression also passed: Three Forks preset, slope table, ratio, emergency return and cancel.
+USED IN: src/config/layers.js, src/components/MapView.jsx, src/components/SlopePanel.jsx, src/components/ScienceStops.jsx, src/styles.css
+NOTE: No model, algorithm or data file changed. The slope display is generated in the browser from the existing slope.bin; the underlying processed data remains unchanged. No git commands were run.
+
+[2026-11-15 14:06] FEATURE: UX/UI Tiers 2-4
+WHAT: Sidebar/layers-card layout, conditions chip/drawer, route summary, live During the walk, mission assumptions/validation accordions, readability and responsive polish
+WHERE FROM: Existing F3-F9/F12 implementation and user-approved UX/UI requirements
+HOW VERIFIED: Production build: 51 modules, 378.77 kB JS, 42.05 kB CSS. npm run preview at 1366x1080 and 1920x1080: body width matched viewport with no horizontal overflow; 340 px sidebar, responsive 300 px layer card at 1920. Bright Angel preset with two stops: walk summary, 9 h 4 min time warning, 50% consumables point-of-no-return and 70 red segments; emergency return showed NOT ENOUGH and one magenta path, cancel removed it. Traverse toggle, both basemap radios, conditions drawer and Data & Credits (24 sources) worked with no console/page errors. Three Forks preset, comparison and F9 regression remained functional.
+USED IN: src/App.jsx, src/components/MapLayersPanel.jsx, src/components/RoutePanel.jsx, src/components/ConditionsPanel.jsx, src/config/presets.js, src/context/MapContext.jsx, src/components/MapView.jsx, src/styles.css
+NOTE: No models, algorithms or data files changed. Existing route, energy, comparison and emergency values remain reachable in the sidebar accordions/results.
+
+[2026-11-15 14:18] FEATURE: UX/UI regression completion
+WHAT: Final responsive and interaction regression after Tiers 1-4
+WHERE FROM: Existing app features and user-specified UX/UI requirements
+HOW VERIFIED: Manual route with landing site start and one Séítah stop produced 4.33 km, 1 h 51 min walking, 30 min stop time, 3 h 42 min round trip, 1,385 kJ and 68.9 L O2, with no errors. Responsive checks at 1366x1080 and 1920x1080 had body width equal to viewport. Bright Angel preset at 50% showed 70 unsafe red segments; comparison, emergency NOT ENOUGH, cancel, traverse toggle, basemap radios, conditions drawer and Data & Credits all passed. No console/page errors.
+USED IN: src/App.jsx, src/components/RoutePanel.jsx, src/components/MapLayersPanel.jsx, src/components/ConditionsPanel.jsx, src/styles.css
+NOTE: Tiers 1-4 complete. No git commands were run.

@@ -15,9 +15,10 @@ function statusClass(status) {
   return 'is-no-go';
 }
 
-export default function ConditionsPanel() {
+export default function ConditionsPanel({ compact = false }) {
   const [conditions, setConditions] = useState(null);
   const [error, setError] = useState(null);
+  const [open, setOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -64,7 +65,27 @@ export default function ConditionsPanel() {
   const overall = tempStatus;
 
   return (
-    <aside className="conditions-panel" aria-label="Weather conditions">
+    <>
+      {compact && (
+        <button
+          type="button"
+          className={`conditions-chip ${statusClass(overall)}`}
+          onClick={() => setOpen((value) => !value)}
+          aria-expanded={open}
+        >
+          <strong>{overall}</strong>
+          <span>
+            EVA window min {temperature.evaWindow.minC.toFixed(1)} °C · Sol{' '}
+            {temperature.sol}
+          </span>
+        </button>
+      )}
+      {(!compact || open) && <aside className={`conditions-panel${compact ? ' conditions-drawer' : ''}`} aria-label="Weather conditions">
+      {compact && (
+        <button type="button" className="conditions-drawer__close" onClick={() => setOpen(false)}>
+          Close
+        </button>
+      )}
       <div className="conditions-panel__header">
         <div>
           <div className="conditions-panel__title">Conditions</div>
@@ -154,6 +175,7 @@ export default function ConditionsPanel() {
           Sensor damaged by dust-laden whirlwinds; not used in the status.
         </div>
       </div>
-    </aside>
+      </aside>}
+    </>
   );
 }

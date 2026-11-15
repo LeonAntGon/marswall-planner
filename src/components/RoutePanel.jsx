@@ -5,7 +5,7 @@ import { useMap } from '../context/MapContext.jsx';
 import { useRoute } from '../context/RouteContext.jsx';
 import { buildEnergyProfile, walkingTimeSeconds } from '../lib/effort.js';
 import { compareSlopes, compareToRover } from '../lib/compare.js';
-import { marsDistance, pathLength } from '../lib/marsGeo.js';
+import { LANDING_SITE, marsDistance, pathLength } from '../lib/marsGeo.js';
 import {
   ROUTE_PRESETS,
   TRAVERSE_URL,
@@ -115,7 +115,7 @@ function pointsFromCellPath(indices, gridData) {
   });
 }
 
-function ElevationProfile({ profile }) {
+function ElevationProfile({ profile, safety, stopIndices = [], currentIndex, onSelect }) {
   if (!profile || profile.length < 2) return null;
 
   const width = 260;
@@ -127,14 +127,15 @@ function ElevationProfile({ profile }) {
   const maxElev = Math.max(...elevations);
   const span = Math.max(1, maxElev - minElev);
 
-  const points = profile
+  const pointList = profile
     .map((point) => {
       const x = pad + (point.d / total) * (width - pad * 2);
       const y =
         pad + (1 - (point.elev - minElev) / span) * (height - pad * 2);
-      return `${x.toFixed(1)},${y.toFixed(1)}`;
+      return { x: x.toFixed(1), y: y.toFixed(1), value: `${x.toFixed(1)},${y.toFixed(1)}` };
     })
-    .join(' ');
+    ;
+  const points = pointList.map((point) => point.value).join(' ');
 
   return (
     <div className="route-profile">
@@ -155,14 +156,42 @@ function ElevationProfile({ profile }) {
           }`}
           fill="rgba(0, 229, 255, 0.12)"
         />
-        <polyline
-          points={points}
-          fill="none"
-          stroke="#00e5ff"
-          strokeWidth="1.5"
-          strokeLinejoin="round"
-          strokeLinecap="round"
-        />
+        {pointList.slice(1).map((point, index) => {
+          const unsafe = safety?.[index + 1]?.safe === false;
+          return (
+            <line
+              key={`profile-segment-${index}`}
+              x1={pointList[index].x}
+              y1={pointList[index].y}
+              x2={point.x}
+              y2={point.y}
+              stroke={unsafe ? '#ff4d4d' : '#00e5ff'}
+              strokeWidth="1.5"
+              strokeLinejoin="round"
+              strokeLinecap="round"
+            />
+          );
+        })}
+        {stopIndices.map((index) => {
+          const point = pointList[index];
+          return point ? (
+            <circle key={`profile-stop-${index}`} cx={point.x} cy={point.y} r="2.5" fill="#ffd166" />
+          ) : null;
+        })}
+        {currentIndex !== null && currentIndex !== undefined && pointList[currentIndex] && (
+          <circle
+            cx={pointList[currentIndex].x}
+            cy={pointList[currentIndex].y}
+            r="3"
+            fill="#ff6bd6"
+          />
+        )}
+        <polyline points={points} fill="none" stroke="transparent" strokeWidth="12" onMouseMove={(event) => {
+          if (!onSelect) return;
+          const rect = event.currentTarget.ownerSVGElement.getBoundingClientRect();
+          const fraction = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
+          onSelect(Math.round(fraction * (profile.length - 1)));
+        }} />
       </svg>
     </div>
   );
@@ -309,6 +338,25 @@ export default function RoutePanel() {
       : null;
   const positionPoint =
     positionIndex !== null ? route?.[positionIndex] ?? null : null;
+  const stopIndices = route
+    ? stops
+        .map((stop) => route.findIndex((point) => point.col === stop.col && point.row === stop.row))
+        .filter((index) => index >= 0)
+    : [];
+  const duringWalk = useMemo(() => {
+    if (!route || !metrics || !effort || positionIndex === null) return null;
+    const walkedM = metrics.profile?.[positionIndex]?.d || 0;
+    const cumulative = effort.cumulative[positionIndex];
+    const elapsedWalking = walkingTimeSeconds(route.slice(0, positionIndex + 1), SUIT_FACTOR);
+    const stopsDone = stopIndices.filter((index) => index <= positionIndex).length;
+    return {
+      walkedM,
+      remainingM: Math.max(0, metrics.totalM - walkedM),
+      elapsedSeconds: elapsedWalking + stopsDone * ASSUMPTIONS.scienceStopMinutes.value * 60,
+      energyRemainingJ: effort.capacityJ - cumulative.totalJ,
+      o2RemainingL: (effort.capacityJ - cumulative.totalJ) / (ASSUMPTIONS.oxygenEnergy.value * 1000),
+    };
+  }, [route, metrics, effort, positionIndex, stopIndices]);
 
   const loadComparisonData = async () => {
     if (compareDataRef.current) return compareDataRef.current;
@@ -723,9 +771,8 @@ export default function RoutePanel() {
       });
   };
 
-  const runThreeForksPreset = () => {
+  const runPreset = (preset) => {
     if (!gridData) return;
-    const preset = ROUTE_PRESETS.landingToThreeForks;
     const startCell = latLonToCell(
       preset.start.lat,
       preset.start.lon,
@@ -737,7 +784,7 @@ export default function RoutePanel() {
       gridData.grid
     );
     if (!startCell || !destinationCell) {
-      setRouteError('The Three Forks preset is outside the route grid.');
+      setRouteError(`${preset.label} is outside the route grid.`);
       return;
     }
     const startPoint = {
@@ -752,12 +799,31 @@ export default function RoutePanel() {
         gridData.grid
       ),
     };
+    const presetStops = (preset.stops || []).map((stop) => {
+      const cell = latLonToCell(stop.lat, stop.lon, gridData.grid);
+      if (!cell) return null;
+      return {
+        ...cell,
+        ...cellToLatLon(cell.col, cell.row, gridData.grid),
+        name: stop.name,
+        source: 'science-stop',
+      };
+    }).filter(Boolean);
+
     calculateRoute({
       start: startPoint,
       destination: destinationPoint,
-      stops: [],
+      stops: presetStops,
       compareAfter: true,
     });
+  };
+
+  const useLandingSite = () => {
+    if (!gridData) return;
+    const cell = latLonToCell(LANDING_SITE.lat, LANDING_SITE.lon, gridData.grid);
+    if (!cell) return;
+    setStart({ ...cell, ...cellToLatLon(cell.col, cell.row, gridData.grid) });
+    setMode(null);
   };
 
   const runEmergency = () => {
@@ -889,6 +955,14 @@ export default function RoutePanel() {
 
       {gridData && (
         <>
+          {!route && !calculating && (
+            <div className="route-empty">Pick a preset or set a start point to begin.</div>
+          )}
+          {calculating && (
+            <div className="route-loading" role="status">
+              Planning route and return field…
+            </div>
+          )}
           <div className="route-panel__modes">
             <button
               type="button"
@@ -917,6 +991,32 @@ export default function RoutePanel() {
             <div className="route-panel__hint">
               Click the map to set {modeLabel}.
             </div>
+          )}
+
+          <div className="route-stepper" aria-label="Marswalk planning steps">
+            <div className={`route-step${mode === 'start' || !start ? ' is-active' : ''}`}>
+              <span>1</span>
+              <strong>Start</strong>
+              <small>{start ? formatPoint(start) : 'Choose a start point'}</small>
+              <button type="button" onClick={() => setMode('start')}>change</button>
+            </div>
+            <div className={`route-step${mode === 'destination' || (start && !destination) ? ' is-active' : ''}`}>
+              <span>2</span>
+              <strong>Destination</strong>
+              <small>{destination ? formatPoint(destination) : 'Choose a destination'}</small>
+              <button type="button" onClick={() => setMode('destination')}>change</button>
+            </div>
+            <div className={`route-step${mode === 'stop' || (start && destination) ? ' is-active' : ''}`}>
+              <span>3</span>
+              <strong>Science stops (optional)</strong>
+              <small>{stops.length ? `${stops.length} selected` : 'Optional'}</small>
+              <button type="button" onClick={() => setMode('stop')}>change</button>
+            </div>
+          </div>
+          {!start && (
+            <button type="button" className="route-panel__landing" onClick={useLandingSite}>
+              Use landing site
+            </button>
           )}
 
           <div className="route-panel__points">
@@ -959,8 +1059,9 @@ export default function RoutePanel() {
               className="route-panel__primary"
               disabled={!start || !destination || calculating}
               onClick={() => calculateRoute()}
+              title={!start || !destination ? 'Set a start and destination first' : 'Plan the route'}
             >
-              {calculating ? 'Calculating...' : 'Calculate route'}
+              {calculating ? 'Planning...' : 'Plan route'}
             </button>
             <button type="button" onClick={clearAll} disabled={calculating}>
               Clear all
@@ -970,37 +1071,83 @@ export default function RoutePanel() {
           <button
             type="button"
             className="route-panel__preset"
-            onClick={runThreeForksPreset}
+            onClick={() => runPreset(ROUTE_PRESETS.landingToThreeForks)}
             disabled={!gridData || calculating}
           >
             {ROUTE_PRESETS.landingToThreeForks.label}
           </button>
+          <button
+            type="button"
+            className="route-panel__preset"
+            onClick={() => runPreset(ROUTE_PRESETS.landingToBrightAngel)}
+            disabled={!gridData || calculating}
+          >
+            {ROUTE_PRESETS.landingToBrightAngel.label}
+          </button>
 
-          <div className="route-panel__consumables-control">
-            <div className="route-panel__control-head">
-              <span>Consumables at start</span>
-              <strong>{consumablesPercent}%</strong>
+          <details className="mission-assumptions">
+            <summary>Mission assumptions</summary>
+            <div className="route-panel__consumables-control">
+              <div className="route-panel__control-head">
+                <span>Consumables at start</span>
+                <strong>{consumablesPercent}%</strong>
+              </div>
+              <input
+                type="range"
+                min="20"
+                max="100"
+                step="5"
+                value={consumablesPercent}
+                onChange={(event) =>
+                  setConsumablesPercent(Number(event.target.value))
+                }
+              />
+              <div className="route-panel__model-assumption">
+                Model assumption <span className="badge badge--assumed">assumed</span>
+              </div>
             </div>
-            <input
-              type="range"
-              min="20"
-              max="100"
-              step="5"
-              value={consumablesPercent}
-              onChange={(event) =>
-                setConsumablesPercent(Number(event.target.value))
-              }
-            />
-            <div className="route-panel__model-assumption">
-              Model assumption{' '}
-              <span className="badge badge--assumed">assumed</span>
-            </div>
-          </div>
+            <div className="mission-assumptions__row"><span>Science stop time</span><strong>{ASSUMPTIONS.scienceStopMinutes.value} min <em>assumed</em></strong></div>
+            <div className="mission-assumptions__row"><span>EVA duration</span><strong>{ASSUMPTIONS.suitDuration.value} h <em>assumed</em></strong></div>
+            <div className="mission-assumptions__row"><span>Return margin</span><strong>{ASSUMPTIONS.returnMargin.value * 100}% <em>assumed</em></strong></div>
+            <div className="mission-assumptions__row"><span>Suit speed factor</span><strong>{SUIT_FACTOR} <em>assumed</em></strong></div>
+          </details>
 
           {routeError && <div className="route-panel__error">{routeError}</div>}
           {walkbackError && (
             <div className="route-panel__error">
               Walkback unavailable: {walkbackError}
+            </div>
+          )}
+
+          {metrics && (
+            <section className="walk-summary" aria-label="Walk summary">
+              <div className="route-panel__section-title">Walk summary</div>
+              <div className="walk-summary__grid">
+                <div><span>Distance</span><strong>{(metrics.totalM / 1000).toFixed(2)} km</strong></div>
+                <div><span>Walking time</span><strong>{formatDuration(metrics.timeSeconds)}</strong></div>
+                <div><span>Time at stops</span><strong>{effort ? `${effort.stopMinutes} min` : '—'}</strong></div>
+                <div><span>Round trip</span><strong>{roundTrip ? formatDuration(roundTrip.totalSeconds) : '—'}</strong></div>
+                <div><span>Energy used</span><strong>{effort ? `${(effort.energyUsedJ / 1000).toFixed(0)} kJ · ${(effort.energyPercent).toFixed(1)}%` : '—'}</strong></div>
+                <div><span>O2 used</span><strong>{effort ? `${effort.o2UsedL.toFixed(1)} L · ${(effort.o2Percent).toFixed(1)}%` : '—'}</strong></div>
+                <div><span>Max slope</span><strong>{metrics.maxSlopeDeg.toFixed(1)}°</strong></div>
+                <div><span>Ascent / descent</span><strong>{metrics.ascentM.toFixed(0)} / {metrics.descentM.toFixed(0)} m</strong></div>
+                <div><span>Science stops</span><strong>{stops.length}</strong></div>
+              </div>
+              <div className={`walk-summary__verdict ${effort?.firstUnsafe ? 'is-danger' : roundTrip?.exceedsDuration || roundTrip?.exceedsWindow ? 'is-warning' : 'is-safe'}`}>
+                {effort?.firstUnsafe
+                  ? `Point of no return at ${(effort.firstUnsafe.index / Math.max(1, route.length - 1) * metrics.totalM / 1000).toFixed(2)} km`
+                  : roundTrip?.exceedsDuration || roundTrip?.exceedsWindow
+                    ? 'Round trip has EVA time warnings'
+                    : 'Safe to walk and return'}
+              </div>
+            </section>
+          )}
+
+          {route && (
+            <div className="route-legend" aria-label="Route legend">
+              <span><i className="route-legend__line is-planned" /> planned route</span>
+              <span><i className="route-legend__line is-unsafe" /> unsafe</span>
+              <span><i className="route-legend__line is-emergency" /> emergency return</span>
             </div>
           )}
 
@@ -1030,25 +1177,32 @@ export default function RoutePanel() {
                 Suit speed factor {SUIT_FACTOR}{' '}
                 <span className="badge badge--assumed">assumed</span>
               </div>
-              <ElevationProfile profile={metrics.profile} />
+               <ElevationProfile
+                 profile={metrics.profile}
+                 safety={effort?.safety}
+                 stopIndices={stopIndices}
+                 currentIndex={positionIndex}
+                 onSelect={(index) => setPositionPercent((index / Math.max(1, route.length - 1)) * 100)}
+               />
             </div>
           )}
 
           {route && (
-            <div className="route-panel__compare-control">
-              <button
-                type="button"
-                onClick={() => runComparison(route)}
-                disabled={comparing}
-              >
-                {comparing
-                  ? 'Comparing...'
-                  : 'Compare with Perseverance'}
-              </button>
-            </div>
-          )}
-          {comparisonError && (
-            <div className="route-panel__error">{comparisonError}</div>
+            <details className="route-validation">
+              <summary>Validation vs Perseverance</summary>
+              <div className="route-panel__compare-control">
+                <button
+                  type="button"
+                  onClick={() => runComparison(route)}
+                  disabled={comparing}
+                >
+                  {comparing ? 'Comparing...' : 'Compare with Perseverance'}
+                </button>
+              </div>
+              {comparisonError && (
+                <div className="route-panel__error">{comparisonError}</div>
+              )}
+            </details>
           )}
 
           {roundTrip && (
@@ -1146,9 +1300,9 @@ export default function RoutePanel() {
 
           {route && metrics && (
             <div className="route-panel__emergency">
-              <div className="route-panel__section-title">Emergency return</div>
+              <div className="route-panel__section-title">During the walk</div>
               <div className="route-panel__control-head">
-                <span>Position along route</span>
+                <span>Simulate position along the route</span>
                 <strong>{positionPercent}%</strong>
               </div>
               <input
@@ -1167,6 +1321,17 @@ export default function RoutePanel() {
                   ? formatPoint(positionPoint)
                   : 'No route position selected'}
               </div>
+              {duringWalk && (
+                <div className="during-walk__stats">
+                  <div className="route-panel__time-row"><span>Distance walked / remaining</span><strong>{(duringWalk.walkedM / 1000).toFixed(2)} / {(duringWalk.remainingM / 1000).toFixed(2)} km</strong></div>
+                  <div className="route-panel__time-row"><span>Elapsed time</span><strong>{formatDuration(duringWalk.elapsedSeconds)}</strong></div>
+                  <ConsumableBar label="Energy remaining" used={Math.max(0, effort.capacityJ - duringWalk.energyRemainingJ) / 1000} capacity={effort.capacityJ / 1000} remaining={duringWalk.energyRemainingJ / 1000} unit="kJ" />
+                  <ConsumableBar label="O2 remaining" used={Math.max(0, effort.o2CapacityL - duringWalk.o2RemainingL)} capacity={effort.o2CapacityL} remaining={duringWalk.o2RemainingL} unit="L" />
+                  {emergency && !emergency.error && (
+                    <div className="route-panel__time-row"><span>Distance / time back</span><strong>{(emergency.returnDistanceM / 1000).toFixed(2)} km · {formatDuration(emergency.returnSeconds)}</strong></div>
+                  )}
+                </div>
+              )}
               <button
                 type="button"
                 className="route-panel__emergency-button"
@@ -1236,7 +1401,9 @@ export default function RoutePanel() {
           )}
 
           {comparison && (
-            <div className="route-comparison">
+            <details className="route-validation-result" open>
+              <summary>Validation results</summary>
+              <div className="route-comparison">
               <div className="route-panel__section-title">Rover check</div>
               <div className="route-comparison__metrics">
                 <div>
@@ -1367,7 +1534,8 @@ export default function RoutePanel() {
                 constraints, so agreement shows the slope-based cost is
                 plausible and differences are expected.
               </p>
-            </div>
+              </div>
+            </details>
           )}
 
           <div className="route-panel__note">

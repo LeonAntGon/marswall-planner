@@ -6,6 +6,38 @@ import { useMap } from '../context/MapContext.jsx';
 
 const BANDS = ASSUMPTIONS.slopeBands.value;
 
+function makeSlopeDataUrl(buffer, grid) {
+  const canvas = document.createElement('canvas');
+  canvas.width = grid.cols;
+  canvas.height = grid.rows;
+  const context = canvas.getContext('2d');
+  const image = context.createImageData(grid.cols, grid.rows);
+  const view = new DataView(buffer);
+  const colors = BANDS.slice(1).map((band) => {
+    const hex = band.color.slice(1);
+    return [
+      Number.parseInt(hex.slice(0, 2), 16),
+      Number.parseInt(hex.slice(2, 4), 16),
+      Number.parseInt(hex.slice(4, 6), 16),
+    ];
+  });
+
+  for (let index = 0; index < grid.rows * grid.cols; index += 1) {
+    const value = view.getFloat32(index * 4, true);
+    const offset = index * 4;
+    if (!Number.isFinite(value) || value <= BANDS[0].maxDeg) continue;
+    const bandIndex =
+      value <= BANDS[1].maxDeg ? 0 : value <= BANDS[2].maxDeg ? 1 : 2;
+    const color = colors[bandIndex];
+    image.data[offset] = color[0];
+    image.data[offset + 1] = color[1];
+    image.data[offset + 2] = color[2];
+    image.data[offset + 3] = 255;
+  }
+  context.putImageData(image, 0, 0);
+  return canvas.toDataURL('image/png');
+}
+
 export default function SlopePanel() {
   const { map } = useMap();
   const overlayRef = useRef(null);
@@ -21,21 +53,21 @@ export default function SlopePanel() {
     setStatus('loading');
     setError(null);
 
-    fetch(SLOPE_OVERLAY.gridUrl)
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error(
-            `HTTP ${response.status} for ${SLOPE_OVERLAY.gridUrl}`
-          );
+    Promise.all([fetch(SLOPE_OVERLAY.gridUrl), fetch('/data/slope.bin')])
+      .then(async ([gridResponse, slopeResponse]) => {
+        if (!gridResponse.ok) {
+          throw new Error(`HTTP ${gridResponse.status} for ${SLOPE_OVERLAY.gridUrl}`);
         }
-        return response.json();
-      })
-      .then((data) => {
+        if (!slopeResponse.ok) {
+          throw new Error(`HTTP ${slopeResponse.status} for /data/slope.bin`);
+        }
+        const data = await gridResponse.json();
+        const slopeBuffer = await slopeResponse.arrayBuffer();
         if (cancelled) return;
         if (!Array.isArray(data.leafletBounds) || data.leafletBounds.length !== 2) {
           throw new Error('grid.json has no valid leafletBounds');
         }
-        setGrid(data);
+        setGrid({ ...data, slopeDataUrl: makeSlopeDataUrl(slopeBuffer, data) });
         setStatus('ready');
       })
       .catch((fetchError) => {
@@ -58,14 +90,29 @@ export default function SlopePanel() {
   }, [opacity]);
 
   useEffect(() => {
-    if (!map || !grid || !enabled) return undefined;
+    if (!map || !grid) return undefined;
+
+    const outline = L.rectangle(grid.leafletBounds, {
+      color: '#8fe3ff',
+      weight: 1,
+      dashArray: '5 5',
+      fill: false,
+      interactive: false,
+    }).addTo(map);
+    outline.bindTooltip('Planning area (12 x 12 km)', {
+      permanent: true,
+      direction: 'center',
+      className: 'planning-grid-label',
+    });
+
+    if (!enabled) return () => outline.remove();
 
     if (!map.getPane('slopePane')) {
       const pane = map.createPane('slopePane');
       pane.style.zIndex = 300;
     }
 
-    const overlay = L.imageOverlay(SLOPE_OVERLAY.url, grid.leafletBounds, {
+    const overlay = L.imageOverlay(grid.slopeDataUrl, grid.leafletBounds, {
       pane: 'slopePane',
       opacity: opacityRef.current,
       interactive: false,
@@ -87,6 +134,7 @@ export default function SlopePanel() {
     return () => {
       overlay.off('error', handleError);
       overlay.remove();
+      outline.remove();
       if (overlayRef.current === overlay) overlayRef.current = null;
     };
   }, [map, grid, enabled]);
@@ -123,7 +171,10 @@ export default function SlopePanel() {
             <span>{Math.round(opacity * 100)}%</span>
           </label>
           <div className="slope-panel__legend">
-            {BANDS.map((band) => (
+            <span className="slope-panel__unshaded">
+              below 10°: not shaded
+            </span>
+            {BANDS.slice(1).map((band) => (
               <span className="slope-panel__legend-item" key={band.label}>
                 <span
                   className="slope-panel__swatch"

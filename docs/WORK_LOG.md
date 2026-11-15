@@ -439,3 +439,64 @@ sizes and troubleshooting.
   ignore rules.
 - `public/data/traverse.geojson` and `public/data/waypoints.geojson` are
   versioned app data, not ignored.
+
+---
+
+## 11. UX/UI pass completed after the original F1-F9 implementation
+
+### Tier 1 - first-load map
+
+- Default basemap is `Jezero HiRISE color (25 cm)`.
+- A permanent OPM fallback layer remains underneath regional HiRISE layers.
+- HiRISE and place-name layers have coverage bounds.
+- Tile status is hidden unless the URL contains `?debug=1`.
+- Slope display is enabled at 55% opacity; below 10 degrees is fully transparent,
+  and only 10-20, 20-30 and >30 degrees are shaded.
+- Dashed planning-grid outline and `Planning area (12 x 12 km)` label are always visible.
+- M20 place names default to off. The six science stops have permanent labels;
+  the landing marker has a permanent `Landing site` label.
+- Initial grid fitting accounts for the left sidebar width.
+
+### Tier 2 - layout
+
+- Fixed, scrollable and collapsible 340 px left sidebar.
+- Three-step Start / Destination / Science stops stepper.
+- `Use landing site` action and both route presets: Landing -> Three Forks (sol 674)
+  and Landing -> Bright Angel (2 science stops).
+- One right-side `Map layers` card containing basemaps, place names, slope and
+  traverse controls.
+- Conditions moved to a compact header chip with a full drawer.
+- Existing global overview control remains available.
+- Header tagline: `Plan a safe walk on Mars with real NASA mission data`.
+
+### Tier 3 - astronaut-facing results
+
+- Walk summary tiles show distance, walking time, time at stops, round trip,
+  energy/O2 and percentages, max slope, ascent/descent and stop count.
+- Single verdict banner for safe, time-warning or point-of-no-return state.
+- Elevation profile marks unsafe segments red, science stops amber and the
+  simulated position magenta; chart movement updates the route position.
+- F9 is presented as `During the walk` with distance, elapsed time, remaining
+  resources and return path information.
+- Editable values are grouped in `Mission assumptions`.
+- Perseverance results are grouped under `Validation vs Perseverance`.
+
+### Tier 4 - polish and regression
+
+- Increased panel/body readability and stat emphasis.
+- Added route legend: cyan planned, red unsafe, magenta emergency and amber rover traverse.
+- Added loading and empty states.
+- Responsive checks at 1366x1080 and 1920x1080 showed no horizontal overflow
+  and no overlapping panels.
+
+### UX/UI verification
+
+- Production build: 51 modules, 378.77 kB JS, 42.05 kB CSS.
+- Bright Angel preset + two stops at 50% consumables: point of no return at
+  8.62 km, 70 red segments, emergency status NOT ENOUGH, cancel removes the
+  magenta path.
+- Conditions drawer, Data & Credits, traverse toggle and all basemap radios
+  worked in `npm run preview` with no console/page errors.
+- No models, algorithms or processed data files were changed in this UX/UI pass.
+
+- Final manual-route regression: landing site start + one Séítah stop produced a valid 4.33 km route, 3 h 42 min round trip and no console errors.

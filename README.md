@@ -18,16 +18,18 @@ F8 (rover-traverse comparison), F9 (emergency return) and F12 (Data & Credits)
 are implemented.
 
 - Slim dark topbar and full-height Leaflet map.
-- Default base: **Jezero HiRISE grayscale (25 cm)** at zoom 12.
+- Default base: **Jezero HiRISE color (25 cm)** at zoom 12, with a permanent
+  OPM Mars fallback underneath.
 - Available layers: OPM basemap v0.1, MOLA hillshade, Jezero HiRISE color (25 cm)
   and M20 place names.
-- Layer control with base-layer radios and overlay checkboxes.
+- Collapsible left planner sidebar and right Map layers card with basemap,
+  slope, traverse and place-name controls.
 - `L.circleMarker` at the landing site with the popup
   “Octavia E. Butler Landing (Perseverance, Mars 2020)”.
-- Bottom-left tile status box, one-time per-layer console warnings and
-  crash-free tile-error handling.
-- F2 slope overlay (600×600 cells, 12×12 km) with a bottom-right panel:
-  show/hide, opacity slider, colour legend and max-slope statistic.
+- Tile diagnostics are available only with `?debug=1`; normal UI has no tile
+  status panel.
+- F2 slope overlay (600×600 cells, 12×12 km) with below-10° transparent,
+  55% default opacity, colour legend and max-slope statistic.
 - F3/F4 route planner: set start/stops/destination, A* with slopes above 30°
   blocked, route metrics and an SVG elevation profile.
 - F5 consumables: energy and O2 bars, a Consumables-at-start slider
@@ -46,6 +48,9 @@ are implemented.
   the percentage above 10°/20° for the rover traverse and our route.
 - F9 emergency return: position slider, marker, lowest-energy path from
   `costToBase`/predecessors, return consumables and OK/NOT ENOUGH status.
+- UX/UI pass: Start/Destination/Science stops stepper, presets, walk summary,
+  mission-assumptions and validation accordions, conditions chip/drawer,
+  responsive sidebar and route legend.
 - Map navigation is locked to the grid plus 30 % padding; tile layers have
   `noWrap`, the initial view fits the grid, and the minimum zoom is the padded
   area fit (no planet-wide view).
@@ -57,9 +62,9 @@ are implemented.
 
 - The M20 detail layers only cover the Jezero area. Outside that coverage the
   map is blank, and the status box says so.
-- The OPM MOLA hillshade has native tiles only at zoom 0–6. Selecting it at
-  zoom 12 produces tile errors; the status box reports them and the app keeps
-  working. The documented URL was not modified.
+- The OPM MOLA hillshade has native tiles only at zoom 0–6; Leaflet upscales
+  z6 at the Jezero view. A Global overview button is available for planet-wide
+  OPM context.
 - The M20 detail tiles are TMS. XYZ requests return 403, so `tms: true` is
   required.
 - The place-names overlay is clipped to the measured z12 tile rectangle because

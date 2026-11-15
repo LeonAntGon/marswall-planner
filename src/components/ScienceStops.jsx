@@ -52,8 +52,8 @@ export default function ScienceStops() {
       const offset = OFFSETS[properties.id] || [11, 11];
       const icon = L.divIcon({
         className: 'science-marker',
-        html: `<span class="science-marker__dot" style="background:${properties.color}">${index + 1}</span>`,
-        iconSize: [22, 22],
+        html: `<span class="science-marker__dot" style="background:${properties.color}">${index + 1}</span><span class="science-marker__label">${properties.name}</span>`,
+        iconSize: [190, 22],
         iconAnchor: offset,
       });
       const marker = L.marker([properties.lat, properties.lon], {
@@ -61,7 +61,12 @@ export default function ScienceStops() {
         title: `${properties.name} · sol ${properties.solUsed}`,
         riseOnHover: true,
       }).addTo(group);
-      marker.on('click', () => setSelected(properties));
+      marker
+        .bindTooltip(`${properties.name} · sol ${properties.solUsed}`, {
+          direction: 'top',
+          offset: [0, -8],
+        })
+        .on('click', () => setSelected(properties));
     });
 
     return () => {

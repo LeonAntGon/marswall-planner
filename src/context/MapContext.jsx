@@ -4,7 +4,11 @@ export const MapContext = createContext(null);
 
 export function MapProvider({ children }) {
   const [map, setMap] = useState(null);
-  const value = useMemo(() => ({ map, setMap }), [map]);
+  const [layers, setLayers] = useState(null);
+  const value = useMemo(
+    () => ({ map, setMap, layers, setLayers }),
+    [map, layers]
+  );
 
   return <MapContext.Provider value={value}>{children}</MapContext.Provider>;
 }
