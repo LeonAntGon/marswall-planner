@@ -516,11 +516,11 @@ export default function RoutePanel() {
         .addTo(group);
     };
 
-    addPointMarker(start, 'Inicio', '#2ecc71', 8);
+    addPointMarker(start, 'Start', '#2ecc71', 8);
     stops.forEach((stop, index) => {
-      addPointMarker(stop, `Parada ${index + 1}`, '#f2c14e', 6);
+      addPointMarker(stop, `Stop ${index + 1}`, '#f2c14e', 6);
     });
-    addPointMarker(destination, 'Destino', '#e74c3c', 8);
+    addPointMarker(destination, 'Destination', '#e74c3c', 8);
     if (positionPoint) {
       addPointMarker(
         positionPoint,
