@@ -361,15 +361,18 @@ export default function RoutePanel() {
   // Stops are matched in visiting order: once a stop is matched, subsequent
   // stops search from that index onward so a stop cell crossed earlier (on the
   // way to a previous stop) is not charged at the wrong position.
-  let stopSearchFrom = 0;
-  const stopIndices = [];
-  for (const stop of stops || []) {
-    const offset = route
-      .slice(stopSearchFrom)
-      .findIndex((point) => point.col === stop.col && point.row === stop.row);
-    if (offset >= 0) {
-      stopSearchFrom += offset;
-      stopIndices.push(stopSearchFrom);
+  let stopIndices = [];
+  if (route && route.length > 0) {
+    let stopSearchFrom = 0;
+    stopIndices = [];
+    for (const stop of stops || []) {
+      const offset = route
+        .slice(stopSearchFrom)
+        .findIndex((point) => point.col === stop.col && point.row === stop.row);
+      if (offset >= 0) {
+        stopSearchFrom += offset;
+        stopIndices.push(stopSearchFrom);
+      }
     }
   }
   const duringWalk = useMemo(() => {
