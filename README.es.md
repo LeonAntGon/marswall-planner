@@ -7,6 +7,8 @@ Una aplicación web estática para el NASA Space Apps Challenge 2026. Construye 
 - **Demostración en video (30 s):** https://youtu.be/VOB8qgboYEg
 - **Aplicación desplegada:** https://marswall-planner.vercel.app/
 
+![Miniatura de Marswalk Planner](public/youtube-thumbnail.png)
+
 ## Equipo
 
 | Rol | GitHub |
