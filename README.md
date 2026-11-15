@@ -5,10 +5,51 @@ Jezero Crater, the Perseverance landing site (18.4447 N, 77.4508 E), and will gr
 into an EVA planner with slope-aware routing, human consumables, weather and science
 stops.
 
-The source of truth for requirements and data is:
+## Live demo
 
-- `docs/SPEC.md` — challenge requirements, features F1–F15 and assumptions.
-- `docs/DATASETS.md` — datasets D1–D9, URLs, local file names and processing commands.
+- **Video demonstration (30 s):** https://youtu.be/VOB8qgboYEg
+- **Deployed app:** https://marswall-planner.vercel.app/
+
+## Team
+
+| Role | GitHub |
+|------|--------|
+| Team member | https://github.com/Hearly98 |
+| Team member | https://github.com/LeonAntGon |
+
+## NASA Data & Resources Used
+
+The project uses the following NASA / Space Agency Partner data and resources:
+
+| Link Text | Link Url |
+|-----------|----------|
+| Mars 2020 Terrain Relative Navigation CTX DTM Mosaic (20 m) | https://astrogeology.usgs.gov/search/map/mars_2020_terrain_relative_navigation_ctx_dtm_mosaic |
+| CTX DTM raw file (20 m) | https://planetarymaps.usgs.gov/mosaic/mars2020_trn/CTX/JEZ_ctx_B_soc_008_DTM_MOLAtopography_DeltaGeoid_20m_Eqc_latTs0_lon0.tif |
+| Mars 2020 Perseverance traverse JSON | https://mars.nasa.gov/mmgis-maps/M20/Layers/json/M20_traverse.json |
+| Mars 2020 Perseverance waypoints JSON | https://mars.nasa.gov/mmgis-maps/M20/Layers/json/M20_waypoints.json |
+| Mars 2020 Perseverance location map tile layers (MMGIS) | https://mars.nasa.gov/maps/location/api/configure/get?mission=M20 |
+| Mars 2020 Perseverance location map page | https://science.nasa.gov/mission/mars-2020-perseverance/location-map/ |
+| HiRISE grayscale tile layer (25 cm) | https://mars.nasa.gov/mmgis-maps/M20/Layers/JEZ_hirise_soc_007_orthoMosaic_25cm_Ortho_blend120/{z}/{x}/{y}.png |
+| HiRISE color tile layer (25 cm) | https://mars.nasa.gov/mmgis-maps/M20/Layers/M20_HiRISE_RGB_mosaic_25cm_v4p2/{z}/{x}/{y}.png |
+| M20 place names tile layer | https://mars.nasa.gov/mmgis-maps/M20/Layers/M20_Placenames_175k_800dpi/{z}/{x}/{y}.png |
+| OPM MOLA hillshade tiles (Mars Global Surveyor) | https://s3.us-east-2.amazonaws.com/opmmarstiles/hillshade-tiles/{z}/{x}/{y}.png |
+| NASA Mars Fact Sheet (Mars radius & gravity) | https://nssdc.gsfc.nasa.gov/planetary/factsheet/marsfact.html |
+| Jezero Crater landing-site coordinates | https://science.nasa.gov/mission/mars-2020-perseverance/location-map/ |
+| Mars 2020 MEDA environmental data | https://pds-atmospheres.nmsu.edu/PDS/data/PDS4/Mars2020/mars2020_meda/ |
+| NASA Science — Campaign #2: The Delta Front | https://science.nasa.gov/blog/campaign-2-the-delta-front |
+| NASA Science — Perseverance One Martian Year at Jezero | https://science.nasa.gov/blog/a-lap-around-the-sun-perseverance-celebrates-one-martian-year-at-jezero/ |
+| NASA — Perseverance Studies the Wild Winds of Jezero Crater | https://www.nasa.gov/solar-system/nasas-perseverance-studies-the-wild-winds-of-jezero-crater/ |
+
+The full source registry is also in `src/config/sources.js`, rendered by the **Data & Credits**
+button in the topbar, together with the assumptions table.
+
+## AI-Generated Content Disclosure
+
+Some images and text in this repository (including README screenshots and graphics)
+were generated or assisted with AI tools (a Kilo coding assistant). They were used to
+accelerate innovation and creativity; the core idea — planning safe Mars walks with
+real NASA data — is original to the team. No NASA branding, logos, flags, or mission
+identifiers were generated or modified by AI.
 
 ## Current status
 
@@ -87,6 +128,13 @@ are implemented.
 - The colour bands, suit speed factor, F6 status thresholds, F5 consumables,
   F8 comparison settings and F9 default position are project assumptions
   documented in `src/config/assumptions.js`.
+
+## Screenshots
+
+No app screenshots are committed to this repository yet. A YouTube thumbnail is
+available at `public/youtube-thumbnail.png`. To add README screenshots, capture
+the running app at `http://localhost:5173/` and place PNG files under
+`docs/screenshots/` or `public/`, then reference them here.
 
 ## Quick start
 
@@ -346,6 +394,6 @@ based and must not be used.
 ## Next step
 
 F1–F9 and F12 are implemented. F10, F11, F13, F14 and F15 are not started.
-The repository is initialized on GitHub (LeonAntGon/marswalk-planner) with
+The repository is initialized on GitHub (LeonAntGon/marswall-planner) with
 commits on `main`. Pending work: public deployment (Vercel/Netlify) and the
 NASA Space Apps submission checklist.
