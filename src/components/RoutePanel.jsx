@@ -361,15 +361,18 @@ export default function RoutePanel() {
   // Stops are matched in visiting order: once a stop is matched, subsequent
   // stops search from that index onward so a stop cell crossed earlier (on the
   // way to a previous stop) is not charged at the wrong position.
-  let stopSearchFrom = 0;
-  const stopIndices = [];
-  for (const stop of stops || []) {
-    const offset = route
-      .slice(stopSearchFrom)
-      .findIndex((point) => point.col === stop.col && point.row === stop.row);
-    if (offset >= 0) {
-      stopSearchFrom += offset;
-      stopIndices.push(stopSearchFrom);
+  let stopIndices = [];
+  if (route && route.length > 0) {
+    let stopSearchFrom = 0;
+    stopIndices = [];
+    for (const stop of stops || []) {
+      const offset = route
+        .slice(stopSearchFrom)
+        .findIndex((point) => point.col === stop.col && point.row === stop.row);
+      if (offset >= 0) {
+        stopSearchFrom += offset;
+        stopIndices.push(stopSearchFrom);
+      }
     }
   }
   const duringWalk = useMemo(() => {
@@ -494,24 +497,30 @@ export default function RoutePanel() {
 
     const group = L.featureGroup().addTo(map);
 
-    const addPointMarker = (point, label, color) => {
+    const addPointMarker = (point, label, color, radius = 6) => {
       if (!point) return;
       L.circleMarker([point.lat, point.lon], {
-        radius: 6,
+        radius,
         color: '#ffffff',
         weight: 2,
         fillColor: color,
         fillOpacity: 0.95,
       })
         .bindPopup(label)
+        .bindTooltip(label, {
+          permanent: true,
+          direction: 'top',
+          offset: [0, -10],
+          className: 'point-label',
+        })
         .addTo(group);
     };
 
-    addPointMarker(start, 'Start', '#2ecc71');
+    addPointMarker(start, 'Start', '#2ecc71', 8);
     stops.forEach((stop, index) => {
-      addPointMarker(stop, `Stop ${index + 1}`, '#f2c14e');
+      addPointMarker(stop, `Stop ${index + 1}`, '#f2c14e', 6);
     });
-    addPointMarker(destination, 'Destination', '#e74c3c');
+    addPointMarker(destination, 'Destination', '#e74c3c', 8);
     if (positionPoint) {
       addPointMarker(
         positionPoint,

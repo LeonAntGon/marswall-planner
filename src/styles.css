@@ -98,7 +98,7 @@ body {
   position: fixed;
   top: 54px;
   right: 12px;
-  z-index: 2100;
+  z-index: 2600;
   width: 320px;
   max-height: calc(100vh - 72px);
   max-height: calc(100dvh - 72px);
@@ -1249,6 +1249,17 @@ body {
   border-top: 1px solid #2a3644;
 }
 
+.point-label {
+  background: rgba(0, 0, 0, 0.75);
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  white-space: nowrap;
+}
+
 .consumable {
   margin-top: 6px;
 }
@@ -1513,7 +1524,7 @@ body {
   position: fixed;
   top: 54px;
   right: 12px;
-  z-index: 2100;
+  z-index: 2600;
   width: 320px;
   max-height: calc(100vh - 72px);
   max-height: calc(100dvh - 72px);
