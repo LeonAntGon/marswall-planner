@@ -497,24 +497,30 @@ export default function RoutePanel() {
 
     const group = L.featureGroup().addTo(map);
 
-    const addPointMarker = (point, label, color) => {
+    const addPointMarker = (point, label, color, radius = 6) => {
       if (!point) return;
       L.circleMarker([point.lat, point.lon], {
-        radius: 6,
+        radius,
         color: '#ffffff',
         weight: 2,
         fillColor: color,
         fillOpacity: 0.95,
       })
         .bindPopup(label)
+        .bindTooltip(label, {
+          permanent: true,
+          direction: 'top',
+          offset: [0, -10],
+          className: 'point-label',
+        })
         .addTo(group);
     };
 
-    addPointMarker(start, 'Start', '#2ecc71');
+    addPointMarker(start, 'Inicio', '#2ecc71', 8);
     stops.forEach((stop, index) => {
-      addPointMarker(stop, `Stop ${index + 1}`, '#f2c14e');
+      addPointMarker(stop, `Parada ${index + 1}`, '#f2c14e', 6);
     });
-    addPointMarker(destination, 'Destination', '#e74c3c');
+    addPointMarker(destination, 'Destino', '#e74c3c', 8);
     if (positionPoint) {
       addPointMarker(
         positionPoint,
