@@ -98,7 +98,7 @@ body {
   position: fixed;
   top: 54px;
   right: 12px;
-  z-index: 2100;
+  z-index: 2600;
   width: 320px;
   max-height: calc(100vh - 72px);
   max-height: calc(100dvh - 72px);
@@ -1524,7 +1524,7 @@ body {
   position: fixed;
   top: 54px;
   right: 12px;
-  z-index: 2100;
+  z-index: 2600;
   width: 320px;
   max-height: calc(100vh - 72px);
   max-height: calc(100dvh - 72px);
