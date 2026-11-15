@@ -57,7 +57,7 @@ README.md                            Project overview, quick start, F1/F2 status
 COMMANDS.md                          Every setup/run/build/check/preprocess command.
 AGENTS.md                            This file: rules, structure, priorities and current status.
 used.txt                             Append-only provenance log.
-package.json                         npm dependencies, scripts and the check:tiles command.
+package.json                         npm dependencies, scripts, check:tiles and test commands.
 package-lock.json                    Locked dependency tree produced by npm install.
 vite.config.js                       Vite React plugin and ES module worker format.
 index.html                           App shell and page metadata.
@@ -101,6 +101,9 @@ src/lib/astar.worker.js              F3 A* route planner Web Worker.
 src/lib/walkback.worker.js           F5 reverse Dijkstra cost-to-base field and predecessors.
 src/lib/effort.js                    F5 Minetti energy, Tobler time, consumables and safety model.
 src/lib/compare.js                   F8 pure route-vs-traverse comparison functions.
+src/lib/routeState.js                Pure RoutePanel helpers: in-flight route inputs and current emergency result.
+tests/effort.test.js                 node:test regression tests for F5 stop-energy placement.
+tests/routeState.test.js             node:test regression tests for stale route and emergency results.
 src/components/MapView.jsx           F1 map lifecycle, layer control, marker and tile status.
 src/components/SlopePanel.jsx        F2 image overlay, opacity slider, legend and stats.
 src/components/RoutePanel.jsx        F3/F4/F5/F8/F9 controls, metrics, compare and emergency.

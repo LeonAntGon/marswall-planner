@@ -17,7 +17,6 @@ export default function MapLayersPanel() {
   useEffect(() => {
     if (!map || !layers) return;
     const layer = layers.baseLayers[selectedBase];
-    console.info('[MapLayersPanel] ensure base', selectedBase, Boolean(layer), layer ? map.hasLayer(layer) : null);
     if (layer && !map.hasLayer(layer)) map.addLayer(layer);
   }, [map, layers, selectedBase]);
 

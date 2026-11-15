@@ -156,11 +156,6 @@ export default function MapView() {
     // Keep the UX default explicit; the declarative flag is still retained in
     // layers.js for any future layer-list consumer.
     const defaultBase = baseLayers['Jezero HiRISE color (25 cm)'];
-    console.info('[MapView] default base', {
-      keys: Object.keys(baseLayers),
-      found: Boolean(defaultBase),
-      has: defaultBase ? map.hasLayer(defaultBase) : null,
-    });
     if (defaultBase && !map.hasLayer(defaultBase)) defaultBase.addTo(map);
 
     L.circleMarker([LANDING_SITE.lat, LANDING_SITE.lon], LANDING_MARKER_STYLE)

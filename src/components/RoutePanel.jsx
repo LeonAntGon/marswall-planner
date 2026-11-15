@@ -16,6 +16,7 @@ import {
   isBlockedCell,
   latLonToCell,
 } from '../lib/gridData.js';
+import { isEmergencyCurrent, sameRouteInputs } from '../lib/routeState.js';
 
 const MAX_SLOPE = ASSUMPTIONS.maxWalkableSlope.value;
 const SUIT_FACTOR = ASSUMPTIONS.suitSpeedFactor.value;
@@ -249,6 +250,7 @@ export default function RoutePanel() {
   const compareDataRef = useRef(null);
   const compareRequestRef = useRef(0);
   const requestRef = useRef(0);
+  const inflightInputsRef = useRef(null);
 
   useEffect(
     () => () => {
@@ -266,6 +268,24 @@ export default function RoutePanel() {
   );
 
   useEffect(() => {
+    // Inputs changed while a route was being calculated for other inputs:
+    // cancel it so its late result cannot be shown for the new inputs.
+    if (
+      inflightInputsRef.current &&
+      !sameRouteInputs(inflightInputsRef.current, { start, stops, destination })
+    ) {
+      inflightInputsRef.current = null;
+      requestRef.current += 1;
+      if (workerRef.current) {
+        workerRef.current.terminate();
+        workerRef.current = null;
+      }
+      if (walkbackWorkerRef.current) {
+        walkbackWorkerRef.current.terminate();
+        walkbackWorkerRef.current = null;
+      }
+      setCalculating(false);
+    }
     compareRequestRef.current += 1;
     setRoute(null);
     setMetrics(null);
@@ -338,11 +358,20 @@ export default function RoutePanel() {
       : null;
   const positionPoint =
     positionIndex !== null ? route?.[positionIndex] ?? null : null;
-  const stopIndices = route
-    ? stops
-        .map((stop) => route.findIndex((point) => point.col === stop.col && point.row === stop.row))
-        .filter((index) => index >= 0)
-    : [];
+  // Stops are matched in visiting order: once a stop is matched, subsequent
+  // stops search from that index onward so a stop cell crossed earlier (on the
+  // way to a previous stop) is not charged at the wrong position.
+  let stopSearchFrom = 0;
+  const stopIndices = [];
+  for (const stop of stops || []) {
+    const offset = route
+      .slice(stopSearchFrom)
+      .findIndex((point) => point.col === stop.col && point.row === stop.row);
+    if (offset >= 0) {
+      stopSearchFrom += offset;
+      stopIndices.push(stopSearchFrom);
+    }
+  }
   const duringWalk = useMemo(() => {
     if (!route || !metrics || !effort || positionIndex === null) return null;
     const walkedM = metrics.profile?.[positionIndex]?.d || 0;
@@ -357,6 +386,12 @@ export default function RoutePanel() {
       o2RemainingL: (effort.capacityJ - cumulative.totalJ) / (ASSUMPTIONS.oxygenEnergy.value * 1000),
     };
   }, [route, metrics, effort, positionIndex, stopIndices]);
+  const shownEmergency = isEmergencyCurrent(emergency, {
+    positionPercent,
+    consumablesPercent,
+  })
+    ? emergency
+    : null;
 
   const loadComparisonData = async () => {
     if (compareDataRef.current) return compareDataRef.current;
@@ -517,8 +552,8 @@ export default function RoutePanel() {
       }
     }
 
-    if (emergency?.returnPoints?.length > 1) {
-      const returnLatLngs = emergency.returnPoints.map((point) => [
+    if (shownEmergency?.returnPoints?.length > 1) {
+      const returnLatLngs = shownEmergency.returnPoints.map((point) => [
         point.lat,
         point.lon,
       ]);
@@ -548,7 +583,7 @@ export default function RoutePanel() {
     effort,
     positionPoint,
     positionPercent,
-    emergency,
+    shownEmergency,
   ]);
 
   const calculateRoute = (options = {}) => {
@@ -586,6 +621,11 @@ export default function RoutePanel() {
 
     const requestId = requestRef.current + 1;
     requestRef.current = requestId;
+    inflightInputsRef.current = {
+      start: routeStart,
+      stops: routeStops,
+      destination: routeDestination,
+    };
 
     compareRequestRef.current += 1;
     setCalculating(true);
@@ -735,6 +775,7 @@ export default function RoutePanel() {
     ])
       .then(([path, walkbackResult]) => {
         if (requestId !== requestRef.current) return;
+        inflightInputsRef.current = null;
 
         const points = path.map((index) => {
           const row = Math.floor(index / gridData.grid.cols);
@@ -766,6 +807,7 @@ export default function RoutePanel() {
       })
       .catch((error) => {
         if (requestId !== requestRef.current) return;
+        inflightInputsRef.current = null;
         setRouteError(error.message || 'Route calculation failed.');
         setCalculating(false);
       });
@@ -850,18 +892,30 @@ export default function RoutePanel() {
     );
     const returnPoints = pointsFromCellPath(indices, gridData);
     if (!returnPoints) {
-      setEmergency({ error: 'No walkback path is available from this point.' });
+      setEmergency({
+        error: 'No walkback path is available from this point.',
+        positionPercent,
+        consumablesPercent,
+      });
       return;
     }
 
     const returnEnergyJ = walkback.cost[currentIndex];
     if (!Number.isFinite(returnEnergyJ)) {
-      setEmergency({ error: 'No walkback energy is available from this point.' });
+      setEmergency({
+        error: 'No walkback energy is available from this point.',
+        positionPercent,
+        consumablesPercent,
+      });
       return;
     }
     const cumulative = effort.cumulative[positionIndex];
     if (!cumulative) {
-      setEmergency({ error: 'Route energy at this position is unavailable.' });
+      setEmergency({
+        error: 'Route energy at this position is unavailable.',
+        positionPercent,
+        consumablesPercent,
+      });
       return;
     }
 
@@ -887,6 +941,7 @@ export default function RoutePanel() {
       marginJ,
       ok: marginJ >= 0,
       positionPercent,
+      consumablesPercent,
       positionIndex,
     });
   };
@@ -895,6 +950,7 @@ export default function RoutePanel() {
 
   const clearAll = () => {
     requestRef.current += 1;
+    inflightInputsRef.current = null;
     if (workerRef.current) {
       workerRef.current.terminate();
       workerRef.current = null;
@@ -1327,8 +1383,8 @@ export default function RoutePanel() {
                   <div className="route-panel__time-row"><span>Elapsed time</span><strong>{formatDuration(duringWalk.elapsedSeconds)}</strong></div>
                   <ConsumableBar label="Energy remaining" used={Math.max(0, effort.capacityJ - duringWalk.energyRemainingJ) / 1000} capacity={effort.capacityJ / 1000} remaining={duringWalk.energyRemainingJ / 1000} unit="kJ" />
                   <ConsumableBar label="O2 remaining" used={Math.max(0, effort.o2CapacityL - duringWalk.o2RemainingL)} capacity={effort.o2CapacityL} remaining={duringWalk.o2RemainingL} unit="L" />
-                  {emergency && !emergency.error && (
-                    <div className="route-panel__time-row"><span>Distance / time back</span><strong>{(emergency.returnDistanceM / 1000).toFixed(2)} km · {formatDuration(emergency.returnSeconds)}</strong></div>
+                  {shownEmergency && !shownEmergency.error && (
+                    <div className="route-panel__time-row"><span>Distance / time back</span><strong>{(shownEmergency.returnDistanceM / 1000).toFixed(2)} km · {formatDuration(shownEmergency.returnSeconds)}</strong></div>
                   )}
                 </div>
               )}
@@ -1345,48 +1401,48 @@ export default function RoutePanel() {
                   Walkback path field is not available.
                 </div>
               )}
-              {emergency?.error && (
-                <div className="route-panel__error">{emergency.error}</div>
+              {shownEmergency?.error && (
+                <div className="route-panel__error">{shownEmergency.error}</div>
               )}
-              {emergency && !emergency.error && (
+              {shownEmergency && !shownEmergency.error && (
                 <div className="route-panel__emergency-result">
                   <div
                     className={
-                      emergency.ok
+                      shownEmergency.ok
                         ? 'route-panel__safe'
                         : 'route-panel__warning'
                     }
                   >
-                    <strong>{emergency.ok ? 'OK' : 'NOT ENOUGH'}</strong>
+                    <strong>{shownEmergency.ok ? 'OK' : 'NOT ENOUGH'}</strong>
                   </div>
                   <div className="route-panel__time-row">
                     <span>Return distance</span>
                     <strong>
-                      {(emergency.returnDistanceM / 1000).toFixed(2)} km
+                      {(shownEmergency.returnDistanceM / 1000).toFixed(2)} km
                     </strong>
                   </div>
                   <div className="route-panel__time-row">
                     <span>Return walking time</span>
-                    <strong>{formatDuration(emergency.returnSeconds)}</strong>
+                    <strong>{formatDuration(shownEmergency.returnSeconds)}</strong>
                   </div>
                   <div className="route-panel__time-row">
                     <span>Energy needed</span>
                     <strong>
-                      {(emergency.returnEnergyJ / 1000).toFixed(1)} kJ ·{' '}
-                      {emergency.returnO2L.toFixed(1)} L O2
+                      {(shownEmergency.returnEnergyJ / 1000).toFixed(1)} kJ ·{' '}
+                      {shownEmergency.returnO2L.toFixed(1)} L O2
                     </strong>
                   </div>
                   <div className="route-panel__time-row">
                     <span>Remaining at position</span>
                     <strong>
-                      {(emergency.remainingJ / 1000).toFixed(1)} kJ ·{' '}
-                      {emergency.remainingO2L.toFixed(1)} L O2
+                      {(shownEmergency.remainingJ / 1000).toFixed(1)} kJ ·{' '}
+                      {shownEmergency.remainingO2L.toFixed(1)} L O2
                     </strong>
                   </div>
                   <div className="route-panel__time-row">
                     <span>Margin (needs +20%)</span>
                     <strong>
-                      {(emergency.marginJ / 1000).toFixed(1)} kJ
+                      {(shownEmergency.marginJ / 1000).toFixed(1)} kJ
                     </strong>
                   </div>
                   <div className="route-panel__emergency-legend">

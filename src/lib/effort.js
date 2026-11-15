@@ -131,12 +131,18 @@ export function buildEnergyProfile(route, stops, options) {
   const o2CapacityL = energyToO2Liters(capacityJ, o2KjPerLiter);
   const stopEnergyJ = metabolicRateW * scienceStopMinutes * 60;
 
+  // Stops are visited in order, so search each one from the previous stop's
+  // index. A plain findIndex would charge a stop at an earlier crossing of
+  // its cell (for example on the way to a previous stop).
   const stopCountAt = new Map();
+  let searchFrom = 0;
   for (const stop of stops || []) {
-    const index = route.findIndex(
-      (point) => point.col === stop.col && point.row === stop.row
-    );
+    const offset = route
+      .slice(searchFrom)
+      .findIndex((point) => point.col === stop.col && point.row === stop.row);
+    const index = offset >= 0 ? searchFrom + offset : -1;
     if (index >= 0) {
+      searchFrom = index;
       stopCountAt.set(index, (stopCountAt.get(index) || 0) + 1);
     }
   }

@@ -117,6 +117,14 @@ Open:
 http://localhost:4173/
 ```
 
+## Unit tests
+
+```powershell
+npm test
+```
+
+Runs the pure-logic regression tests in `tests/*.test.js` with the built-in Node test runner (`node:test`). No extra dependencies and no network access.
+
 ## 4. Tile verification
 
 ```powershell

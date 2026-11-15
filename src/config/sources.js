@@ -181,7 +181,7 @@ export const SOURCES = [
     institution: 'OpenJS Foundation',
     url: 'https://nodejs.org/',
     license: 'MIT',
-    use: 'Build runtime and scripts/check_tiles.mjs',
+    use: 'Build runtime, scripts/check_tiles.mjs and the built-in node:test runner (npm test)',
     verification: 'node --version reports v22.17.0.',
   },
   {
