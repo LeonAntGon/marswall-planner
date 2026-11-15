@@ -1,0 +1,6 @@
+node_modules/
+dist/
+preprocess/raw/*
+!preprocess/raw/.gitkeep
+*.tif
+.DS_Store

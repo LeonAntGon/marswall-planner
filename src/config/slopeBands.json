@@ -1,0 +1,22 @@
+[
+  {
+    "maxDeg": 10,
+    "color": "#2e7d32",
+    "label": "0-10°"
+  },
+  {
+    "maxDeg": 20,
+    "color": "#f2c14e",
+    "label": "10-20°"
+  },
+  {
+    "maxDeg": 30,
+    "color": "#f3722c",
+    "label": "20-30°"
+  },
+  {
+    "maxDeg": null,
+    "color": "#d00000",
+    "label": ">30°"
+  }
+]

@@ -1,0 +1,193 @@
+{
+  "type": "FeatureCollection",
+  "name": "marswalk_science_stops",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.44436574,
+          18.4307394,
+          -2574.524
+        ]
+      },
+      "properties": {
+        "id": "maaz",
+        "name": "Crater floor (Maaz)",
+        "type": "Crater floor / igneous",
+        "minerals": "Basaltic lava flows; high-Ca pyroxene, Fe-bearing feldspar, hematite",
+        "whyItMatters": "Igneous basement and aqueous alteration; a geochronology framework for Jezero.",
+        "whatToSample": "Rochette and Sid cores (mission-reported).",
+        "missionData": "Mars 2020 + MRO/CRISM",
+        "reference": "Sun et al. 2023, JGR Planets, DOI 10.1029/2022JE007613",
+        "referenceUrl": "https://doi.org/10.1029/2022JE007613",
+        "color": "#b07d62",
+        "anchorSol": 180,
+        "solUsed": 180,
+        "lat": 18.4307394,
+        "lon": 77.44436574,
+        "elevGeoidM": -2574.524,
+        "distTotalM": 2170.398,
+        "approximate": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.44068664,
+          18.43254788,
+          -2571.841
+        ]
+      },
+      "properties": {
+        "id": "seitah",
+        "name": "S\u00e9\u00edtah",
+        "type": "Olivine-rich igneous",
+        "minerals": "Olivine cumulate",
+        "whyItMatters": "Water-altered olivine and early crust; a key sample suite from the crater floor.",
+        "whatToSample": "S\u00e9\u00edtah cores (mission-reported).",
+        "missionData": "Mars 2020 + MRO/CRISM",
+        "reference": "Sun et al. 2023, JGR Planets, DOI 10.1029/2022JE007613",
+        "referenceUrl": "https://doi.org/10.1029/2022JE007613",
+        "color": "#6abf69",
+        "anchorSol": 200,
+        "solUsed": 200,
+        "lat": 18.43254788,
+        "lon": 77.44068664,
+        "elevGeoidM": -2571.841,
+        "distTotalM": 2412.588,
+        "approximate": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.40857967,
+          18.45766138,
+          -2535.629883
+        ]
+      },
+      "properties": {
+        "id": "delta-front",
+        "name": "Delta front (Hawksbill Gap)",
+        "type": "Delta front sediments",
+        "minerals": "Fine-grained delta sediments; hydrated minerals in the region (CRISM)",
+        "whyItMatters": "Lacustrine sediments with high biosignature potential at the western delta front.",
+        "whatToSample": "Delta-front outcrops and cores.",
+        "missionData": "Mars 2020 + MRO/CRISM",
+        "reference": "NASA Delta Front Campaign; AAPG Explorer sol 441",
+        "referenceUrl": "https://science.nasa.gov/blog/campaign-2-the-delta-front",
+        "color": "#f4a261",
+        "anchorSol": 441,
+        "solUsed": 441,
+        "lat": 18.45766138,
+        "lon": 77.40857967,
+        "elevGeoidM": -2535.629883,
+        "distTotalM": 11470.215,
+        "approximate": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.40833585,
+          18.45272753,
+          -2545.443
+        ]
+      },
+      "properties": {
+        "id": "three-forks",
+        "name": "Three Forks sample depot",
+        "type": "Sample depot",
+        "minerals": "Cached cores from the delta front",
+        "whyItMatters": "First sample depot on another world; a contingency cache for Mars Sample Return.",
+        "whatToSample": "10 cached sample tubes.",
+        "missionData": "Mars 2020",
+        "reference": "NASA Perseverance blog, sol 675",
+        "referenceUrl": "https://science.nasa.gov/blog/a-lap-around-the-sun-perseverance-celebrates-one-martian-year-at-jezero/",
+        "color": "#e9c46a",
+        "anchorSol": 675,
+        "solUsed": 674,
+        "lat": 18.45272753,
+        "lon": 77.40833585,
+        "elevGeoidM": -2545.443,
+        "distTotalM": 13937.288,
+        "approximate": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.35070429,
+          18.48328845,
+          -2422.607422
+        ]
+      },
+      "properties": {
+        "id": "margin-unit",
+        "name": "Margin unit (carbonates), entry",
+        "type": "Margin unit / carbonates",
+        "minerals": "Carbonates; possible lacustrine shoreline deposits",
+        "whyItMatters": "Ancient lake-margin carbonates and possible shoreline deposits.",
+        "whatToSample": "Margin-unit outcrops and cores.",
+        "missionData": "Mars 2020 + MRO/CRISM",
+        "reference": "LPSC 2025 abstract 2333",
+        "referenceUrl": "https://www.hou.usra.edu/meetings/lpsc2025/pdf/2333.pdf",
+        "color": "#5dade2",
+        "anchorSol": 910,
+        "solUsed": 909,
+        "lat": 18.48328845,
+        "lon": 77.35070429,
+        "elevGeoidM": -2422.607422,
+        "distTotalM": 20537.016,
+        "approximate": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.30519089,
+          18.49748444,
+          -2354.03125
+        ]
+      },
+      "properties": {
+        "id": "bright-angel",
+        "name": "Neretva Vallis / Bright Angel (Cheyava Falls)",
+        "type": "Paleochannel / Bright Angel formation",
+        "minerals": "Organic-mineral associations, sulfates; potential biosignature",
+        "whyItMatters": "Possible biosignature in the Neretva Vallis / Bright Angel formation.",
+        "whatToSample": "Cheyava Falls core (Sapphire Canyon).",
+        "missionData": "Mars 2020 + MRO/CRISM",
+        "reference": "The Planetary Society, Cheyava Falls article",
+        "referenceUrl": "https://planetary.org/articles/a-biosignature-on-mars-unpacking-perseverances-cheyava-falls-find",
+        "color": "#e76f51",
+        "anchorSol": 1212,
+        "solUsed": 1210,
+        "lat": 18.49748444,
+        "lon": 77.30519089,
+        "elevGeoidM": -2354.03125,
+        "distTotalM": 27431.546,
+        "approximate": true
+      }
+    }
+  ],
+  "metadata": {
+    "description": "F7 science stops derived from D5 waypoints at user-approved anchor sols",
+    "coordinatesAreApproximate": true,
+    "generatedAt": "2026-11-14",
+    "generator": "preprocess/03_science_stops.py",
+    "source": "preprocess/raw/M20_waypoints.json (D5)"
+  }
+}

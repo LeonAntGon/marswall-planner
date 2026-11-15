@@ -1,0 +1,119 @@
+{
+  "source": "D1 - Mars 2020 Terrain Relative Navigation CTX DTM Mosaic (20 m)",
+  "sourceFile": "preprocess/raw/jezero_ctx_dtm_20m.tif",
+  "sourceCitation": "Fergason et al. 2020, LPSC 51; DOI 10.5066/P906QQT8; CC0",
+  "crs": "ESRI:103885",
+  "crsName": "Equirectangular Mars 2000 Sphere IAU",
+  "sphereRadiusMeters": 3396190.0,
+  "rows": 600,
+  "cols": 600,
+  "cellSizeMeters": {
+    "x": 20.0,
+    "y": 20.0
+  },
+  "bounds": {
+    "west": 77.27754745693899,
+    "south": 18.363875070977922,
+    "east": 77.47999471523637,
+    "north": 18.566322329275305
+  },
+  "leafletBounds": [
+    [
+      18.363875070977922,
+      77.27754745693899
+    ],
+    [
+      18.566322329275305,
+      77.47999471523637
+    ]
+  ],
+  "cropWindow": {
+    "colOff": 347,
+    "rowOff": 459,
+    "width": 600,
+    "height": 600
+  },
+  "workArea": {
+    "centerLat": 18.465,
+    "centerLon": 77.3787,
+    "sizeKm": 12.0
+  },
+  "landing": {
+    "lat": 18.4447,
+    "lon": 77.4508,
+    "pixel": {
+      "col": 513.4746,
+      "row": 360.4563
+    }
+  },
+  "nodata": -9999.0,
+  "sourceNodata": -3.4028226550889045e+38,
+  "dtype": "float32",
+  "endianness": "little",
+  "order": "C",
+  "slopeUnits": "degrees",
+  "elevationUnits": "meters",
+  "slopeMethod": "Central differences over the 20 m pixel grid; east-west spacing corrected by cos(latitude). Slopes above 30 degrees are treated as non-walkable in F3.",
+  "generatedAt": "2026-11-14",
+  "generator": "preprocess/02_slope.py",
+  "bands": [
+    {
+      "maxDeg": 10,
+      "color": "#2e7d32",
+      "label": "0-10\u00b0"
+    },
+    {
+      "maxDeg": 20,
+      "color": "#f2c14e",
+      "label": "10-20\u00b0"
+    },
+    {
+      "maxDeg": 30,
+      "color": "#f3722c",
+      "label": "20-30\u00b0"
+    },
+    {
+      "maxDeg": null,
+      "color": "#d00000",
+      "label": ">30\u00b0"
+    }
+  ],
+  "stats": {
+    "validCells": 360000,
+    "nodataCells": 0,
+    "slopeMinDeg": 0.0058,
+    "slopeMaxDeg": 37.7237,
+    "slopeMeanDeg": 5.8571,
+    "percentAbove30": 0.038,
+    "elevationMinM": -2621.0039,
+    "elevationMaxM": -1741.1643,
+    "bands": [
+      {
+        "label": "0-10\u00b0",
+        "color": "#2e7d32",
+        "percent": 81.626
+      },
+      {
+        "label": "10-20\u00b0",
+        "color": "#f2c14e",
+        "percent": 15.595
+      },
+      {
+        "label": "20-30\u00b0",
+        "color": "#f3722c",
+        "percent": 2.741
+      },
+      {
+        "label": ">30\u00b0",
+        "color": "#d00000",
+        "percent": 0.038
+      }
+    ]
+  },
+  "outputs": {
+    "slopePng": "public/data/slope.png",
+    "slopeBin": "public/data/slope.bin",
+    "elevationBin": "public/data/elevation.bin",
+    "gridJson": "public/data/grid.json"
+  }
+}

@@ -1,0 +1,286 @@
+[2026-11-14 17:45] FEATURE: F1
+WHAT: Landing site 18.4447 N, 77.4508 E; initial view 18.44 N, 77.45 E; initial zoom 12; minZoom 3; default M20 grayscale base at zoom 12
+WHERE FROM: docs/SPEC.md section 1 and F1; task brief; D5 first waypoint for cross-check; NASA Mars 2020 location map https://science.nasa.gov/mission/mars-2020-perseverance/location-map/
+HOW VERIFIED: D5 first waypoint parsed from downloaded M20_waypoints.json is 18.44462715, 77.45088573 (6.46 m from the SPEC landing point by marsDistance); headless Chrome screenshot at zoom 12 shows the marker on the HiRISE floor east of the delta front
+USED IN: src/lib/marsGeo.js, src/config/layers.js, src/components/MapView.jsx, AGENTS.md
+NOTE: The marker uses the exact landing coordinates; the initial view uses the rounded F1 centre.
+
+[2026-11-14 17:45] FEATURE: F1
+WHAT: Mars mean radius 3389.5 km; surface gravity 3.71 m/s2 (0.38 g)
+WHERE FROM: NASA Mars Fact Sheet, https://nssdc.gsfc.nasa.gov/planetary/factsheet/marsfact.html (docs/DATASETS.md D9)
+HOW VERIFIED: HTTP 200 (HEAD, 2026-11-14); values match docs/SPEC.md section 9
+USED IN: src/config/assumptions.js, src/lib/marsGeo.js, src/config/sources.js
+NOTE: All app distances use R_MARS = 3389.5 km. map.distance() and L.control.scale are forbidden because they assume Earth. METERS_PER_DEG_LAT is derived as 2*pi*R_MARS*1000/360 = 59157.935 m.
+
+[2026-11-14 17:45] FEATURE: F1
+WHAT: OPM Mars basemap v0.1 tile URL
+WHERE FROM: docs/DATASETS.md D8; OpenPlanetaryMap wiki https://github.com/openplanetary/opm/wiki/OPM-Basemaps
+HOW VERIFIED: npm run check:tiles on 2026-11-14 returned HTTP 200 image/png at z6-z19; z11/x1464/y917 is 1779 B, 256x256. At z11-z19 the Jezero tile is a flat background (3 colours at z11).
+USED IN: src/config/layers.js, src/config/sources.js
+NOTE: Optional global base layer. The default base is the M20 grayscale layer.
+
+[2026-11-14 17:45] FEATURE: F1
+WHAT: OPM MOLA hillshade tile URL and TMS tile scheme
+WHERE FROM: docs/DATASETS.md D8; OpenPlanetaryMap wiki, Hillshade Mars Map, "TMS option required"
+HOW VERIFIED: npm run check:tiles returned HTTP 200 image/png at z6/x45/y35 (44611 B) and HTTP 404 at z7-z19. TMS confirmed by comparing gradient structure with the OPM basemap hemispheres (TMS row correlation 0.179 with north, -0.003 with south).
+USED IN: src/config/layers.js, src/config/sources.js
+NOTE: Native max zoom is 6. The documented URL was not modified; selecting this layer at zoom 12 produces tile errors that the status box reports.
+
+[2026-11-14 17:45] FEATURE: F1
+WHAT: Mars 2020 MMGIS layer metadata: Labels, Color Basemap and Grayscale Basemap URLs, nominal bounds and zoom metadata
+WHERE FROM: https://mars.nasa.gov/maps/location/api/configure/get?mission=M20 (web search snapshot, not verified until curl); task brief
+HOW VERIFIED: curl HTTP 200 application/json 7640 B on 2026-11-14; parsed layer names Labels, Color Basemap and Grayscale Basemap; tile probes then verified the URLs and TMS scheme
+USED IN: src/config/layers.js, src/config/sources.js, docs/DATASETS.md
+NOTE: Initially treated as an unverified web snapshot. The grayscale URL and place-names bounds came from this endpoint.
+
+[2026-11-14 17:45] FEATURE: F1
+WHAT: Mars 2020 color HiRISE v4p2 tile URL hint
+WHERE FROM: https://forum.posit.co/t/r-leaflet-not-handling-tms-true-for-nasa-jpl-tms-provider/179427 (web search snapshot, not verified until curl); task brief
+HOW VERIFIED: forum page HTTP 200 text/html 224749 B; v4p2 tiles HTTP 200 image/png at z10-z18 (z12/x2929/y2261 = 127154 B) and HTTP 403 at z0-z9 and z19; XYZ requests return 403, confirming TMS
+USED IN: src/config/layers.js, src/config/sources.js, docs/DATASETS.md
+NOTE: Forum post is about 3 years old. Only the URL pattern was used; it was verified with curl before being enabled.
+
+[2026-11-14 17:45] FEATURE: F1
+WHAT: M20 Jezero HiRISE grayscale 25 cm tile URL, TMS, zoom range and official bounds
+WHERE FROM: NASA MMGIS configuration endpoint; docs/DATASETS.md D8
+HOW VERIFIED: npm run check:tiles: HTTP 200 image/png at z0-z18 (z12/x2929/y2261 = 53001 B), HTTP 403 at z19. Boundary zooms re-confirmed with curl: z0 200, z18 200, z19 403. XYZ y1834 at z12 returns 403. Landing-site pixel in the z12 tile is (55,148), RGBA (62,62,62,255). Official config bounds lat 18.306796-18.669355, lon 77.223018-77.583908.
+USED IN: src/config/layers.js, src/config/sources.js, docs/DATASETS.md
+NOTE: F1 default base at zoom 12. The bounds are the official config bbox converted to Leaflet order.
+
+[2026-11-14 17:45] FEATURE: F1
+WHAT: M20 Jezero HiRISE color 25 cm tile URL, TMS and zoom range
+WHERE FROM: Posit Community forum thread; NASA MMGIS configuration confirms the same tile service
+HOW VERIFIED: HTTP 403 at z0-z9, HTTP 200 image/png at z10-z18 (z12 = 127154 B), HTTP 403 at z19; boundary zooms re-confirmed with curl: z9 403, z10 200, z18 200, z19 403; XYZ y1834 at z12 returns 403
+USED IN: src/config/layers.js, src/config/sources.js, docs/DATASETS.md
+NOTE: Optional base layer. No reliable v4p2 bounding box was available, so no bounds option is set. In the headless check, selecting it at z12 produced 10 tile errors at the viewport edges from out-of-coverage requests; the status box and the coverage note explain them and the app continues normally.
+
+[2026-11-14 17:45] FEATURE: F1
+WHAT: M20 place-names tile URL, TMS, nominal bounds and measured tile rectangle
+WHERE FROM: docs/DATASETS.md D8; NASA MMGIS configuration (minZoom 4, maxNativeZoom 19); task brief nominal bounds lat 17.821-18.918, lon 76.837-78.154
+HOW VERIFIED: HTTP 403 at z0-z3, HTTP 200 image/png at z4-z18, HTTP 403 at z19; boundary zooms re-confirmed with curl: z3 403, z4 200, z18 200, z19 403. z12 sweep: x2927-2936 and yTMS2260-2266 are 200; adjacent columns x2926/2937 and rows y2259/2267 are 403. XYZ y917 at z11 returns 403.
+USED IN: src/config/layers.js, src/config/sources.js, docs/DATASETS.md
+NOTE: The app clips the overlay to the measured z12 rectangle [[18.312811,77.34375],[18.895893,77.6953125]] instead of the broader nominal bbox, so the default view does not request 403 tiles.
+
+[2026-11-14 17:45] FEATURE: F1
+WHAT: Default base-layer decision and landing-marker alignment check
+WHERE FROM: task A4; own browser screenshot
+HOW VERIFIED: m20-gray is HTTP 200 at z12; headless Chrome screenshot at zoom 12 shows the marker on the HiRISE crater floor east of the western delta, with the "JEZERO CRATER" place label to the east. TMS is required (XYZ returns 403), so the tile is not vertically flipped. No shift larger than the marker radius was visible.
+USED IN: src/config/layers.js, AGENTS.md, docs/DATASETS.md
+NOTE: OPM remains available in the layer control. Initial zoom is 12. The screenshot is a local verification artifact and is not committed.
+
+[2026-11-14 17:45] FEATURE: F1
+WHAT: Leaflet 1.9.4; React and React DOM 18.3.1; Vite 7.3.8; @vitejs/plugin-react 5.2.0; Node.js 22.17.0
+WHERE FROM: npm registry and official project sites https://leafletjs.com/, https://react.dev/, https://vite.dev/, https://github.com/vitejs/vite-plugin-react, https://nodejs.org/
+HOW VERIFIED: npm install added 67 packages with 0 vulnerabilities; npm run build transformed 36 modules and produced 298.60 kB JS and 18.09 kB CSS; node --version reports v22.17.0
+USED IN: package.json, vite.config.js, src/main.jsx, src/App.jsx, src/components/MapView.jsx, src/config/sources.js
+NOTE: Leaflet is BSD-2-Clause; React, Vite and the plugin are MIT. No react-leaflet is used.
+
+[2026-11-14 17:47] FEATURE: F2-prep
+WHAT: Local preprocessing tool status: GDAL CLI, Python, NumPy, Pillow, Rasterio, pip and file
+WHERE FROM: local Windows environment; Python https://www.python.org/
+HOW VERIFIED: gdalinfo, gdalwarp, gdaldem and gdal_translate were not found on PATH; python 3.13.5; numpy 2.2.2; pillow 11.1.0; rasterio missing; pip missing but ensurepip 25.1.1 available; file 5.44 at C:\Program Files\Git\usr\bin\file.exe
+USED IN: preprocess/README.md, src/config/sources.js, AGENTS.md
+NOTE: Install commands documented in preprocess/README.md. Nothing was installed automatically. gdalinfo is still required for the official B3 check.
+
+[2026-11-14 17:47] FEATURE: F2-prep
+WHAT: curl 8.13.0, Git for Windows 2.40.1, file 5.44 and npm 11.13.0
+WHERE FROM: local Windows environment; https://curl.se/, https://git-scm.com/, https://www.npmjs.com/
+HOW VERIFIED: curl --version reports 8.13.0; git --version reports 2.40.1.windows.1; file --version reports 5.44; npm --version reports 11.13.0
+USED IN: preprocess/raw downloads, file-type checks, package management
+NOTE: Development and preprocessing tools only; no browser runtime dependency.
+
+[2026-11-14 17:47] FEATURE: F2-prep
+WHAT: D1 Mars 2020 Terrain Relative Navigation CTX DTM Mosaic, 20 m
+WHERE FROM: https://planetarymaps.usgs.gov/mosaic/mars2020_trn/CTX/JEZ_ctx_B_soc_008_DTM_MOLAtopography_DeltaGeoid_20m_Eqc_latTs0_lon0.tif (docs/DATASETS.md D1)
+HOW VERIFIED: HEAD HTTP 200 image/tiff; curl -L --fail download completed; local size 9662387 B (matches HEAD Content-Length). Git file 5.44: TIFF image data, little-endian, height 1512, bps 32, compression none, width 1596. Python TIFF header parse plus full float32 read: Equirectangular Mars 2000 Sphere IAU, sphere R 3396190 m, 20 m pixels, metre bounds 4573663.250853,1079453.140188 to 4605583.250853,1109693.140188, lon/lat 77.160465-77.698975 E and 18.211027-18.721194 N, min -2710.6958 m, max -1515.5396 m, mean -2356.8696 m, NoData -3.40282265508890445e+38, landing site inside at pixel column 860.47 row 819.46 with nearest elevation -2567.19 m.
+USED IN: preprocess/raw/jezero_ctx_dtm_20m.tif, preprocess/README.md, AGENTS.md
+NOTE: gdalinfo is not installed; the metadata was extracted directly from the GeoTIFF header and the uncompressed float32 raster. The official gdalinfo -stats output is still pending tool installation.
+
+[2026-11-14 17:47] FEATURE: F2-prep
+WHAT: D4 Mars 2020 Terrain Relative Navigation Context Camera Orthorectified Image Mosaic, 6 m
+WHERE FROM: https://planetarymaps.usgs.gov/mosaic/mars2020_trn/CTX/JEZ_ctx_B_soc_008_orthoMosaic_6m_Eqc_latTs0_lon0.tif (docs/DATASETS.md D4)
+HOW VERIFIED: HEAD HTTP 200 image/tiff; curl -L --fail download completed; local size 36269402 B. Git file 5.44: TIFF image data, little-endian, height 5040, bps 8, compression none, width 5322. Header parse: same Equirectangular Mars 2000 Sphere IAU projection, 6 m pixels, metre bounds 4573663.250853,1079453.140188 to 4605595.250853,1109693.140188, lon/lat 77.160465-77.699178 E and 18.211027-18.721194 N, NoData 0, landing site inside at pixel column 2868.25 row 2731.52.
+USED IN: preprocess/raw/jezero_ctx_ortho_6m.tif, preprocess/README.md
+NOTE: D4's east edge is 12 m farther east than D1 because 5322 x 6 m is slightly wider than 1596 x 20 m; top and bottom match. gdalinfo still pending.
+
+[2026-11-14 17:47] FEATURE: F8-prep
+WHAT: D5 Perseverance traverse GeoJSON
+WHERE FROM: https://mars.nasa.gov/mmgis-maps/M20/Layers/json/M20_traverse.json (docs/DATASETS.md D5)
+HOW VERIFIED: HEAD HTTP 200 application/json; curl -L --fail download completed; local size 1723218 B; JSON parse: FeatureCollection with 559 LineString features, properties SCLK_END, SCLK_START, fromRMC, length, sol, toRMC; sol range 14-2022; 36661 coordinates; lat range 18.41996953-18.49966348; lon range 77.21678556-77.4631333; first coordinate [77.45088573, 18.44462715, -2569.91], last [77.23322287, 18.43559434, -1936.366943]
+USED IN: preprocess/raw/M20_traverse.json, preprocess/README.md
+NOTE: Data preparation only; F8 is not implemented. Do not copy the raw JSON to public/data yet. Coordinates are [lon, lat, elevation].
+
+[2026-11-14 17:47] FEATURE: F8-prep
+WHAT: D5 Perseverance waypoints GeoJSON
+WHERE FROM: https://mars.nasa.gov/mmgis-maps/M20/Layers/json/M20_waypoints.json (docs/DATASETS.md D5)
+HOW VERIFIED: HEAD HTTP 200 application/json; curl -L --fail download completed; local size 603126 B; JSON parse: FeatureCollection with 708 Point features; properties include Note, RMC, dist_km, dist_m, dist_mi, dist_total_m, drive, easting, elev_geoid, elev_radii, final, images, lat, lon, northing, pitch, radius, roll, site, sol, tilt, yaw, yaw_rad; sol range 13-2022; first coordinate [77.45088572, 18.44462715, -2569.91], last [77.23322287, 18.43559434, -1936.366943]; first waypoint elev_geoid -2569.91 m
+USED IN: preprocess/raw/M20_waypoints.json, preprocess/README.md
+NOTE: Data preparation only; F8 is not implemented. The first waypoint is 6.46 m from the SPEC landing coordinates and supports the F1 marker alignment check.
+
+[2026-11-14 17:45] FEATURE: F1
+WHAT: SPEC section 9 assumptions: max walkable slope 30 degrees; suit speed factor 0.5; astronaut plus suit mass 180 kg; suit duration 8 h; return margin 20%; oxygen energy 20.1 kJ/L
+WHERE FROM: docs/SPEC.md section 9
+HOW VERIFIED: copied exactly; not independently verified. Radius and gravity are the only values checked against the NASA Mars Fact Sheet.
+USED IN: src/config/assumptions.js
+NOTE: These values are not used by F1. They will drive F4/F5 and are all flagged with assumed true except the oxygen energy constant.
+
+[2026-11-14 17:45] FEATURE: F1
+WHAT: UI style constants: landing marker radius 7, white 2 px stroke, orange fill, 0.9 fill opacity; dark topbar and tile-status box colours and spacing
+WHERE FROM: own design choices
+HOW VERIFIED: not applicable (visual only)
+USED IN: src/config/layers.js, src/styles.css
+NOTE: These are presentation constants, not scientific data.
+
+[2026-11-14 18:56] FEATURE: F2
+WHAT: pip 25.1.1 and rasterio 1.5.2 installed for the F2 preprocessing
+WHERE FROM: Python ensurepip and PyPI via `python -m ensurepip --upgrade` and `python -m pip install rasterio`
+HOW VERIFIED: ensurepip installed pip 25.1.1; pip installed rasterio 1.5.2 plus affine 3.0.1, attrs 26.1.0, certifi 2026.10.23 and click 8.5.1; `python -c "import rasterio; print(rasterio.__version__)"` prints 1.5.2
+USED IN: preprocess/02_slope.py, preprocess/README.md, COMMANDS.md
+NOTE: GDAL CLI remains optional and missing; F2 uses rasterio's bundled GDAL.
+
+[2026-11-14 18:56] FEATURE: F2
+WHAT: Slope colour bands 0-10 green #2e7d32, 10-20 yellow #f2c14e, 20-30 orange #f3722c, >30 red #d00000; 10x10 km work area centred on the landing
+WHERE FROM: docs/SPEC.md F2 suggested bands; docs/DATASETS.md D1 recommendation (~10x10 km, 500x500 cells for A*)
+HOW VERIFIED: copied from the specification; not independently validated. The 10 km crop gives 500x500 cells at the D1 20 m pixel size, verified by the script output.
+USED IN: src/config/slopeBands.json, src/config/assumptions.js, preprocess/02_slope.py, src/components/SlopePanel.jsx, public/data/grid.json
+NOTE: Both values are marked assumed true in assumptions.js. The JSON file is the single source for the Python colours and the app legend.
+
+[2026-11-14 18:56] FEATURE: F2
+WHAT: D1 crop and slope calculation
+WHERE FROM: preprocess/raw/jezero_ctx_dtm_20m.tif (D1; docs/DATASETS.md D1)
+HOW VERIFIED: `python preprocess/02_slope.py` with rasterio 1.5.2; crop cols 610-1109, rows 569-1068 (500x500); bounds lon 77.3662868-77.5349929 E, lat 18.3605010-18.5292070 N; landing pixel 250.4746, 250.4563; slope min 0.0041 deg, max 34.1317 deg, mean 3.0778 deg; 250,000 valid cells, 0 NoData; cells 0-10/10-20/20-30/>30 = 240256/8672/1039/33; 0.0132% above 30 deg; elevation -2651.1343 to -2396.2993 m
+USED IN: preprocess/02_slope.py, public/data/grid.json, public/data/slope.bin, public/data/elevation.bin
+NOTE: Slope uses central differences over 20 m and corrects the east-west spacing by cos(latitude); this avoids the ~5% underestimate from the equirectangular projection. Slopes above 30 deg are flagged for F3 blocking.
+
+[2026-11-14 18:56] FEATURE: F2
+WHAT: F2 raster and JSON outputs
+WHERE FROM: generated by preprocess/02_slope.py
+HOW VERIFIED: script output and `Get-Item public/data/*`: slope.png 7174 B; slope.bin 1000000 B; elevation.bin 1000000 B; grid.json 2703 B. `grid.json` reports rows 500, cols 500, cellSizeMeters 20x20, nodata -9999, dtype float32, little-endian, C order. The binaries were read back with numpy: shape (250000,), slope max 34.131725, elevation max -2396.2993.
+USED IN: public/data/slope.png, public/data/slope.bin, public/data/elevation.bin, public/data/grid.json, README.md, preprocess/README.md
+NOTE: The PNG has transparent NoData and four colour bands. The overlay bounds come from grid.json, not from a hardcoded component value.
+
+[2026-11-14 18:56] FEATURE: F2
+WHAT: F2 app overlay and slope panel
+WHERE FROM: SLOPE_OVERLAY in src/config/layers.js; grid.json bounds; slopeBands.json legend; D1 source entry
+HOW VERIFIED: headless Chrome at 1440x900: panel text "SLOPE / Show slope (20 m) / Opacity 60% / 0-10° / 10-20° / 20-30° / >30° / Max 34.1317° · 0.013% above 30°"; overlay src /data/slope.png at opacity 0.6; checkbox off removes the overlay, on restores it; slider changes opacity to 0.2; slope pane z-index 300, labels pane 350; no page errors and no console warnings. Screenshots at zoom 12 and 14 show the orange/red bands following the delta front and small crater rims. Production preview on port 4173 also loaded the overlay with no errors.
+USED IN: src/components/SlopePanel.jsx, src/App.jsx, src/styles.css, src/config/layers.js, src/config/sources.js
+NOTE: The overlay is clipped to the 10x10 km D1 crop; outside it the base map remains. The slope layer is an image overlay, not a tile layer, so its control is the slope panel rather than the Leaflet layer control.
+
+[2026-11-14 18:56] FEATURE: F2
+WHAT: D1 source entry for F12 credits and the slope feature
+WHERE FROM: docs/DATASETS.md D1; NASA/USGS product page; DOI 10.5066/P906QQT8
+HOW VERIFIED: D1 downloaded 2026-11-14, 9,662,387 B; rasterio reports ESRI:103885; F2 script read the file successfully
+USED IN: src/config/sources.js, src/config/layers.js (SLOPE_OVERLAY.sourceId)
+NOTE: Citation Fergason et al. 2020, LPSC 51; CC0. The source registry entry is ready for the F12 credits screen.
+
+[2026-11-14 21:43] FEATURE: F3
+WHAT: A* route planner on the 500x500 F2 slope grid; 8 directions; slopes >30 deg and NoData blocked; cost = ground step distance x Tobler inverse speed factor
+WHERE FROM: docs/SPEC.md F3; docs/DATASETS.md formulas table (Hart, Nilsson, Raphael 1968; Tobler 1993); own implementation
+HOW VERIFIED: Node tests with public/data/slope.bin: landing->Seitah path 37 cells, 838 visited, 15.6 ms; landing->Delta front 126 cells, 6739 visited, 30.6 ms; landing->Three Forks 127 cells, 6115 visited, 47.2 ms; 0 blocked cells in all paths. Synthetic 10x10 wall test routes around a blocked column (19 cells). Headless Chrome: start + stop + destination route drawn, metrics shown, no console/page errors.
+USED IN: src/lib/gridData.js, src/lib/astar.worker.js, src/components/RoutePanel.jsx
+NOTE: A* cost uses dx = 20 m * cos(latitude) per row and dy = 20 m. The worker returns cell indices; final route metrics use marsGeo.
+
+[2026-11-14 21:43] FEATURE: F4
+WHAT: Walk metrics and elevation profile: distance via marsDistance, ascent/descent from elevation.bin, max slope, Tobler time with suit factor 0.5
+WHERE FROM: docs/SPEC.md F4; src/config/assumptions.js suitSpeedFactor; Tobler 1993
+HOW VERIFIED: Headless Chrome sample route: 4.13 km, ascent 35 m, descent 58 m, max slope 6.8 deg, time 1 h 38 min; profile SVG rendered; assumed badge visible. Flat-speed check: 4.13 km at 2.52 km/h (5.04 km/h Tobler flat x 0.5) is about 1.64 h.
+USED IN: src/components/RoutePanel.jsx, src/styles.css
+NOTE: No map.distance or L.control.scale. The time is a first-order Tobler estimate with an assumed suit factor.
+
+[2026-11-14 21:43] FEATURE: F12
+WHAT: Data & Credits modal generated from sources.js and assumptions.js
+WHERE FROM: local project configuration; no external data
+HOW VERIFIED: Headless Chrome: 22 source cards, 10 assumption rows (7 assumed, 3 sourced), modal opens and closes, no console/page errors; screenshots taken.
+USED IN: src/components/Credits.jsx, src/App.jsx, src/styles.css
+NOTE: Assumed values show an "assumed" badge; sourced constants show "sourced". Full provenance remains in used.txt.
+
+[2026-11-14 21:43] FEATURE: F6
+WHAT: MEDA data selection and solar-radiation handling for F6
+WHERE FROM: https://pds-atmospheres.nmsu.edu/PDS/data/PDS4/Mars2020/mars2020_meda/ ; PS/ATS/RDS sol 1859 and WS sol 313; RDS XML label; https://www.nasa.gov/solar-system/nasas-perseverance-studies-the-wild-winds-of-jezero-crater/
+HOW VERIFIED: PDS directory HTTP 200; PS 48,086 valid values 716.61-750.86 Pa mean 736.05; ATS 48,510 valid row means -83.1 to -21.1 C; RDS_TOP_7 21,559 valid 4.96-154.77 W/m2 mean 79.5; WS 313 mean 4.26 m/s max 22.47 m/s; RDS label has no UV/ultraviolet channel; NASA article HTTP 200 states "Sand carried in whirlwinds damaged MEDA's two wind sensors."
+USED IN: src/config/sources.js, used.txt; future preprocess/04_meda.py and public/data/conditions.json
+NOTE: UI label must be "Solar radiation (MEDA RDS)"; no UV conversion. Wind is not used in the go/caution/no-go indicator. F6 not implemented yet.
+
+[2026-11-14 21:43] FEATURE: F7
+WHAT: F7 anchor sols, waypoint-derived coordinates and source URLs
+WHERE FROM: user-provided anchors; preprocess/raw/M20_waypoints.json (D5); Sun et al. 2023 DOI 10.1029/2022JE007613; NASA Delta Front blog; AAPG Explorer; NASA blog sol 675; LPSC 2025 abstract 2333; Planetary Society Cheyava Falls article
+HOW VERIFIED: D5 waypoints: Maaz anchor 100 -> used sol 99 (18.4437627, 77.4521615); Seitah 200 -> 200 (18.4325479, 77.4406866); Hawksbill Gap 441 -> 441 (18.4576614, 77.4085797); Three Forks 675 -> 674 (18.4527275, 77.4083359); Margin unit 910 -> 909 (18.4832884, 77.3507043); Bright Angel 1212 -> 1210 (18.4974844, 77.3051909). All approximate. Crossref API 200 for the DOI; NASA blogs HTTP 200; LPSC PDF HTTP 200; Planetary Society HTTP 200; AAPG automated fetch blocked (403/000) but search snippet confirms SOL 441. Preliminary sanity: Three Forks near the delta front/base of the scarp; Bright Angel on the western/northwestern edge; no obvious anomaly.
+USED IN: src/config/sources.js, used.txt; future public/data/science_stops.geojson
+NOTE: The current 500x500 F2 crop west edge is 77.3663, so Margin unit (77.3507) and Bright Angel (77.3052) are OUTSIDE. Before F7, expand the F2 crop to at least 600x600 (12x12 km) or 800x800 and regenerate slope/elevation/grid. Final HiRISE visual check pending. Delta top is dropped.
+
+[2026-11-14 23:03] FEATURE: F2
+WHAT: Expanded the F2 slope grid from 500x500 to 600x600 cells (12x12 km), centred at 18.4650 N, 77.3787 E
+WHERE FROM: user decision 2026-11-14; preprocess/raw/jezero_ctx_dtm_20m.tif (D1); preprocess/02_slope.py
+HOW VERIFIED: python preprocess/02_slope.py completed; crop cols 347-946, rows 459-1058; bounds lon 77.2775475-77.4799947 E, lat 18.3638751-18.5663223 N; NoData 0 cells; slope min/max/mean 0.0058/37.7237/5.8571 deg; above 10/20/30 deg 18.3739/2.7789/0.0381%; elevation -2621.004 to -1741.164 m. All six F7 stop cells valid (slopes 1.77/1.77/7.57/1.05/1.62/15.77 deg). Outputs: slope.png 20,130 B; slope.bin 1,440,000 B; elevation.bin 1,440,000 B; grid.json 2,806 B.
+USED IN: public/data/slope.png, public/data/slope.bin, public/data/elevation.bin, public/data/grid.json, src/config/assumptions.js, src/components/RoutePanel.jsx
+NOTE: A* cold-start tests on the new grid: Landing->Seitah 224 ms, Delta front 423 ms, Three Forks 228 ms, Margin unit 438 ms, Bright Angel 844 ms; all under 2 s. Real-terrain test Three Forks base -> upper delta sol 460: 18 cells, max slope 12.78 deg, passes ~140 m from Hawksbill Gap, no no-route. F3/F4 browser test passes with the 12x12 km note and outside-grid message.
+
+[2026-11-14 23:03] FEATURE: F6
+WHAT: Implemented the MEDA conditions panel and conditions.json
+WHERE FROM: PDS4 MEDA bundle; PS/ATS/RDS sol 1859, WS sol 313; NASA wind-damage article; src/config/assumptions.js
+HOW VERIFIED: Four CSVs downloaded to preprocess/raw/meda/ (2,596,701 / 3,832,386 / 11,897,537 / 1,995,142 B); python preprocess/04_meda.py wrote conditions.json 1,206 B. Temperature -83.094 to -21.066 C; pressure 716.61-750.86 Pa mean 736.05; RDS_TOP_7 4.956-154.770 W/m2 mean 79.496; wind sol 313 mean 4.265 max 22.47 m/s. Headless Chrome: status CAUTION; every card shows sol and Earth date; channel tooltip RDS_TOP_7; wind note present; no console/page errors.
+USED IN: preprocess/04_meda.py, public/data/conditions.json, src/components/ConditionsPanel.jsx, src/config/assumptions.js, src/styles.css
+NOTE: Label is "Solar radiation (MEDA RDS)"; no UV conversion. Status uses temperature and pressure only; wind is excluded. Thresholds temp GO >= -75 C / caution >= -90 C, pressure GO >= 650 Pa / caution >= 600 Pa, marked assumed in the UI.
+
+[2026-11-14 23:03] FEATURE: F7
+WHAT: Implemented six science stops, detail cards, offset markers and Add to route
+WHERE FROM: preprocess/raw/M20_waypoints.json (D5); user anchors; Sun et al. 2023; NASA Delta Front blog; AAPG Explorer; NASA blog sol 675; LPSC 2025 abstract 2333; Planetary Society Cheyava Falls
+HOW VERIFIED: python preprocess/03_science_stops.py wrote science_stops.geojson 6,661 B with 6 features. Sols used: Maaz 180, Seitah 200, Delta front 441, Three Forks 674, Margin 909, Bright Angel 1210; all inside the 600x600 grid. Maaz sol 180 is 903.15 m from the landing; Delta front to Three Forks is 292.78 m. Headless Chrome: six numbered markers, six cards, all six Add to route actions returned "Added to route."; route panel showed six unique stops; no console/page errors. Marker icons for Maaz/Seitah and Delta front/Three Forks are offset to avoid overlap.
+USED IN: preprocess/03_science_stops.py, public/data/science_stops.geojson, src/components/ScienceStops.jsx, src/components/ScienceCard.jsx, src/context/RouteContext.jsx, src/styles.css
+NOTE: All coordinates are approximate. Visual sanity: Three Forks near the delta front/base of scarp; Bright Angel on the western/northwestern edge; no obvious anomaly. AAPG browser check skipped per user instruction. No git repository exists, so no commits were made.
+
+[2026-11-14 23:05] FEATURE: F7
+WHAT: Outside-grid Add to route test
+WHERE FROM: temporary test feature at 18.40 N, 77.55 E; same RouteContext validation used by the six real stops
+HOW VERIFIED: temporary 7th science stop added to public/data/science_stops.geojson; headless Chrome opened its card and clicked Add to route; card showed "This stop is outside the 12 x 12 km route grid."; no page/console errors. Original GeoJSON restored afterwards: 6,661 B and 6 features.
+USED IN: src/context/RouteContext.jsx, src/components/ScienceCard.jsx
+NOTE: The test feature was removed; it is not part of the app data.
+
+[2026-11-15 00:20] FEATURE: F6
+WHAT: EVA-window temperature status, hourly ATS and pressure as information only
+WHERE FROM: MEDA CAL_ATS sol 1859 (LMST column), PS sol 1859, src/config/assumptions.js
+HOW VERIFIED: python preprocess/04_meda.py; 24 hourly ATS means; full-sol min/max -83.094/-21.066 C; EVA window 09:00-15:00 LMST min/mean/max -62.846/-37.033/-21.066 C with 13,034 samples; conditions.json 3,698 B; browser status GO; pressure card shows "info only" and tooltip; thresholds/window marked assumed; no console/page errors.
+USED IN: preprocess/04_meda.py, public/data/conditions.json, src/components/ConditionsPanel.jsx, src/config/assumptions.js, src/components/Credits.jsx
+NOTE: Pressure is no longer part of the status. Wind is excluded. No UV conversion.
+
+[2026-11-15 00:20] FEATURE: F5
+WHAT: Minetti 2002 energy model, consumables at start slider, science-stop energy and reverse-Dijkstra walkback
+WHERE FROM: Minetti et al. 2002, J. Appl. Physiol. 93:1039-1046, DOI 10.1152/japplphysiol.01177.2001; docs/SPEC.md F5; src/config/assumptions.js
+HOW VERIFIED: Node and browser tests. Capacity 8.64 MJ and 429.9 L O2 at 100%; 540 kJ and 26.87 L O2 per 30-minute stop. Flat 2 km: 337.0 kJ / 16.76 L / 3.90%; 5% climb 2 km: 485.2 kJ / 24.14 L / 5.62%. Bright Angel without stops: 1,978.5 kJ / 98.43 L / 22.9%; first unsafe slider 40% (vertex 408). With Seitah + Margin stops: 3,191.2 kJ / 158.77 L / 36.94%; first unsafe slider 55% (vertex 428). Browser exact-ish two-stop route: 9.94 km, 3,145 kJ, 156.5 L; first unsafe at 55%, 50% shows 55 red segments and the warning. Worker timings: A* 359.1 ms, walkback Dijkstra 317.6 ms; Node walkback 1,290.3 ms. All under 2 s.
+USED IN: src/lib/effort.js, src/lib/walkback.worker.js, src/context/RouteContext.jsx, src/components/RoutePanel.jsx, src/config/assumptions.js, src/config/sources.js
+NOTE: First-order model; Mars gravity scaling 3.71/9.81 is an approximation. The walkback field is stored in RouteContext for F9 reuse. No git commands were run and no commits were made.
+
+[2026-11-15 01:07] FEATURE: F5
+WHAT: Round-trip time check and Node/browser energy-discrepancy verification
+WHERE FROM: D1 grid, D5 waypoints, modelling assumptions in src/config/assumptions.js
+HOW VERIFIED: Outbound walking + stop time + return walking along the reverse-Dijkstra predecessor path. Landing -> Three Forks: 2 h 4 min (inside 8 h and 6 h). Landing -> Bright Angel without stops: 7 h 45 min (exceeds 6 h window); with Seitah + Margin: 9 h 4 min (exceeds both). A2: exact Bright Angel cell 81,204 gives 3,191.2 kJ; browser-selected cell 98,203 gives 3,145.0 kJ, reproduced exactly in Node with the same endpoint. Not a model inconsistency.
+USED IN: src/lib/effort.js, src/lib/walkback.worker.js, src/components/RoutePanel.jsx, src/config/assumptions.js
+NOTE: No new route search; return path comes from the walkback previous array.
+
+[2026-11-15 01:07] FEATURE: F8
+WHAT: Perseverance traverse/waypoints preprocessing and rover comparison
+WHERE FROM: D5 M20_traverse.json and M20_waypoints.json, https://mars.nasa.gov/mmgis-maps/M20/Layers/json/M20_traverse.json and https://mars.nasa.gov/mmgis-maps/M20/Layers/json/M20_waypoints.json
+HOW VERIFIED: preprocess/05_traverse.py clipped to grid bounds; 402 traverse features; 1,010,195 B before simplification, 5 m tolerance applied because it exceeded 500 kB, final 107,593 B; 517 waypoints, 152,143 B. Direct comparisons: Three Forks mean 400.2 m / median 358.7 m / max 869.8 m, within 50/100/200 m 5.3/13.7/32.8%, our 2.59 km vs rover 13.94 km (sols 13 -> 674); Bright Angel mean 159.2 m / median 109.1 m / max 630.4 m, within 18.9/47.2/73.2%, our 9.52 km vs rover 27.38 km (nearest end waypoint sol 1189; sol 1210 would be 27.43 km). Browser preset and toggle tested; no page errors.
+USED IN: preprocess/05_traverse.py, public/data/traverse.geojson, public/data/waypoints.geojson, src/lib/compare.js, src/components/TraverseLayer.jsx, src/components/RoutePanel.jsx, src/config/presets.js, src/config/sources.js
+NOTE: The rover traverse is a sanity check, not ground truth. Compare timing 92-228 ms in Node.
+
+[2026-11-15 01:07] FEATURE: F9
+WHAT: Emergency return using walkback predecessors and position slider
+WHERE FROM: F5 reverse Dijkstra field, D1 elevation/slope grid, F5 consumables assumptions
+HOW VERIFIED: walkback worker returns previous (Int32Array) with cost, with no new search. Browser Bright Angel with two stops at 50% position and 20% consumables: return 4.66 km / 1 h 46 min, 660.9 kJ / 32.9 L needed, 60.1 kJ / 3.0 L remaining, margin -733.0 kJ, status NOT ENOUGH; cancel removes the magenta dashed path. Three Forks at 100% and 50% returned OK. A* 137.6 ms and walkback 347.0 ms in the F9 test, both < 2 s.
+USED IN: src/lib/walkback.worker.js, src/components/RoutePanel.jsx, src/config/assumptions.js
+NOTE: No git commands were run; no commits were made.
+
+[2026-11-15 01:35] FEATURE: F1
+WHAT: Map world-wrap fix and Jezero-area navigation limits
+WHERE FROM: D1/F2 grid bounds in public/data/grid.json; Leaflet 1.9.4
+HOW VERIFIED: All tile layers now use noWrap:true. Map maxBounds is the grid plus 30% longitude/latitude padding, maxBoundsViscosity 1.0, worldCopyJump false. Initial fitBounds uses the grid with 20 px padding; minZoom is derived from the padded bounds and recalculated on resize. A stable mapGrid state prevents MapView from recreating the map when RouteContext changes. In npm run preview, zoomed drags east/west/north/south stopped at the padded edges with no repeated tiles; slope overlay, six science markers and 402 traverse paths remained visible; no console errors.
+USED IN: src/components/MapView.jsx, src/context/RouteContext.jsx
+NOTE: At the initial grid-fit zoom the padded width is smaller than the viewport, so horizontal panning is intentionally locked there; zooming in enables panning within the same padded bounds.
+
+[2026-11-15 01:35] FEATURE: F8
+WHAT: Slope comparison along rover traverse and our route; honest rover length ratio
+WHERE FROM: D1 slope.bin, D5 clipped traverse/waypoints, F8 comparison inputs
+HOW VERIFIED: 20 m resampling of clipped traverse and route, nearest slope cell. Three Forks: rover mean/median/max 4.90/3.41/19.88 deg, >10/20 deg 14.5/0.0%; our route 2.01/1.72/6.73 deg, >10/20 deg 0.0/0.0%. Bright Angel: rover same 4.90/3.41/19.88 deg, 14.5/0.0%; our route 2.54/2.09/15.77 deg, 1.0/0.0%. Rover/our length ratio 5.38x (Three Forks) and 2.88x (Bright Angel), with the note that rover length includes science detours and exploration. Existing overlap numbers retained: Three Forks 400/359/870 m and 5.3/13.7/32.8% within 50/100/200 m; Bright Angel 159/109/630 m and 18.9/47.2/73.2%.
+USED IN: src/lib/compare.js, src/components/RoutePanel.jsx, src/config/assumptions.js, src/styles.css
+NOTE: No new external source. comparisonSlopeBandsDeg = [10, 20] added as an assumption; F12 is 24 sources / 22 assumptions. A* 221.4 ms and walkback 1153.9 ms in the map/F8 regression; under 2 s.
