@@ -10,6 +10,8 @@ stops.
 - **Video demonstration (30 s):** https://youtu.be/VOB8qgboYEg
 - **Deployed app:** https://marswall-planner.vercel.app/
 
+![Marswalk Planner thumbnail](public/youtube-thumbnail.png)
+
 ## Team
 
 | Role | GitHub |
