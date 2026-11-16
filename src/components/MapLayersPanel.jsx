@@ -1,16 +1,23 @@
 import { useEffect, useState } from 'react';
 import { useMap } from '../context/MapContext.jsx';
+import { COMPACT_QUERY, useMediaQuery } from '../lib/useMediaQuery.js';
 import SlopePanel from './SlopePanel.jsx';
 import TraverseLayer from './TraverseLayer.jsx';
 
 export default function MapLayersPanel() {
   const { map, layers } = useMap();
-  const [collapsed, setCollapsed] = useState(false);
+  const isCompact = useMediaQuery(COMPACT_QUERY);
+  const isNarrowDesktop = useMediaQuery('(max-width: 1100px)');
+  const [collapsed, setCollapsed] = useState(isCompact || isNarrowDesktop);
   const [selectedBase, setSelectedBase] = useState('Jezero HiRISE color (25 cm)');
   const [placeNames, setPlaceNames] = useState(false);
 
   const baseEntries = layers ? Object.entries(layers.baseLayers) : [];
   const placeNamesLayer = layers?.overlays?.['M20 place names'];
+
+  useEffect(() => {
+    setCollapsed(isCompact || isNarrowDesktop);
+  }, [isCompact, isNarrowDesktop]);
 
   // The fallback layer is not a selectable base. Ensure the declared default
   // base is actually attached once the map-layer registry is ready.

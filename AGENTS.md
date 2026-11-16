@@ -54,15 +54,18 @@ Ignore the "Persona A / Persona B" split in those documents.
 docs/SPEC.md                         Requirements, features F1-F15, assumptions and submission checklist.
 docs/DATASETS.md                     Dataset D1-D9 URLs, local names and processing commands.
 README.md                            Project overview, quick start, F1/F2 status and data status.
+README.es.md                         Spanish project overview (from the docs/readme branches).
 COMMANDS.md                          Every setup/run/build/check/preprocess command.
 AGENTS.md                            This file: rules, structure, priorities and current status.
 used.txt                             Append-only provenance log.
 package.json                         npm dependencies, scripts, check:tiles and test commands.
 package-lock.json                    Locked dependency tree produced by npm install.
 vite.config.js                       Vite React plugin and ES module worker format.
-index.html                           App shell and page metadata.
+index.html                           App shell, Open Graph/Twitter metadata and favicon.
 .gitignore                           Ignores node_modules, dist, raw downloads and TIF files.
 public/favicon.svg                   Small Mars favicon.
+public/og-image.jpeg                 1280x720 Open Graph / Twitter preview image.
+public/youtube-thumbnail.png        1280x720 thumbnail used by both READMEs.
 public/data/.gitkeep                 Keeps the processed-data directory in git.
 public/data/slope.png                F2 RGBA slope overlay (600x600).
 public/data/slope.bin                F2 Float32 slope grid (600x600).
@@ -86,32 +89,35 @@ preprocess/raw/M20_waypoints.json            D5 raw waypoints GeoJSON (git-ignor
 preprocess/raw/meda/*.CSV                    MEDA PS/ATS/RDS/WS raw files (git-ignored, downloaded).
 scripts/check_tiles.mjs              Probes every tile layer in src/config/layers.js from the landing site.
 src/main.jsx                         React entry point, Leaflet CSS and global styles.
-src/App.jsx                          Topbar, map shell and all feature panels.
-src/styles.css                       Dark UI, Leaflet overrides, status, route, conditions and cards.
-src/config/assumptions.js            SPEC section 9 constants plus slope bands, work area and conditions thresholds.
+src/App.jsx                          Topbar, compact bottom sheet, desktop sidebar and all feature panels.
+src/styles.css                       Dark UI, responsive sheet/topbar, Leaflet overrides, route, conditions and cards.
+src/config/assumptions.js            SPEC section 9 constants plus slope bands, work area, route penalties and conditions thresholds.
 src/config/slopeBands.json           Shared slope colour bands for app and Python script.
 src/config/layers.js                 F1 view, marker style, tile layers and SLOPE_OVERLAY.
 src/config/presets.js                F8 exact Landing -> Three Forks preset and data URLs.
-src/config/sources.js                Source registry for F12 credits and provenance (24 entries).
+src/config/sources.js                Source registry for F12 credits and provenance (27 entries).
 src/context/MapContext.jsx           MapProvider plus useMap() for map-aware features.
 src/context/RouteContext.jsx         Grid loading, shared route stops and walkback field for F3/F5/F7/F9.
 src/lib/marsGeo.js                   R_MARS, landing site, Jezero centre, Mars distance and path length.
-src/lib/gridData.js                  Loads grid.json/slope.bin/elevation.bin and converts cells to lat/lon.
-src/lib/astar.worker.js              F3 A* route planner Web Worker.
+src/lib/gridData.js                  Loads grid.json/slope.bin/elevation.bin, cell conversion and nearest walkable cell.
+src/lib/astar.worker.js              F3 A* route planner Web Worker with steep penalty and corner guard.
 src/lib/walkback.worker.js           F5 reverse Dijkstra cost-to-base field and predecessors.
 src/lib/effort.js                    F5 Minetti energy, Tobler time, consumables and safety model.
 src/lib/compare.js                   F8 pure route-vs-traverse comparison functions.
 src/lib/routeState.js                Pure RoutePanel helpers: in-flight route inputs and current emergency result.
+src/lib/useMediaQuery.js             React hook for the compact layout and coarse-pointer media queries.
+src/lib/mapFit.js                    Leaflet fitBounds padding for the sidebar, sheet and layers card.
+tests/astar.test.js                  node:test coverage for corner guard, steep penalty and map snap.
 tests/effort.test.js                 node:test regression tests for F5 stop-energy placement.
 tests/routeState.test.js             node:test regression tests for stale route and emergency results.
-src/components/MapView.jsx           F1 map lifecycle, layer control, marker and tile status.
+src/components/MapView.jsx           F1 map lifecycle, layout refit, layer control, marker and tile status.
 src/components/SlopePanel.jsx        F2 image overlay, opacity slider, legend and stats.
-src/components/RoutePanel.jsx        F3/F4/F5/F8/F9 controls, metrics, compare and emergency.
+src/components/RoutePanel.jsx        F3/F4/F5/F8/F9 controls, terrain risk, metrics, profile, compare and emergency.
 src/components/ConditionsPanel.jsx   F6 MEDA conditions, EVA-window status and pressure info.
-src/components/ScienceStops.jsx      F7 six map markers and selected-stop state.
+src/components/ScienceStops.jsx      F7 six map dots (touch-friendly) and optional desktop labels.
 src/components/ScienceCard.jsx       F7 detail card and Add to route.
 src/components/TraverseLayer.jsx     F8 traverse toggle, legend and credit.
-src/components/Credits.jsx           F12 Data & Credits modal.
+src/components/Credits.jsx           F12 Data & Credits modal with responsive assumptions table.
 ```
 
 Planned, not created yet:
@@ -174,12 +180,19 @@ Recommended: the minimum plus F5, F8, F9.
 - [x] F9 emergency return with position slider, predecessors, stats and cancel.
 - [x] Map noWrap, padded max bounds, grid initial view and no-planet min zoom.
 - [x] MOLA z6 tile upscaling and an explicit Global overview/Back to Jezero mode.
+- [x] Responsive shell: compact bottom sheet, desktop collapsible sidebar, reachable
+      Leaflet zoom, collapsed layers on compact, 44 px touch targets and safe areas.
+- [x] F3/F4 terrain risk: soft steep-slope penalty, diagonal corner guard, map-tap
+      snap, steepest-step/highest-point/cliff metrics and amber steep segments.
+- [x] Open Graph and Twitter Card metadata using `public/og-image.jpeg`.
+- [x] `npm test` runs the node:test suite on Windows and covers the route guards.
+- [ ] Replace the relative `og:image` path with an absolute URL after deployment.
 - [ ] Install GDAL CLI for the literal `gdalinfo -stats` output (optional).
 - [ ] Public demo deployment (Vercel/Netlify) and submission checklist.
 
 ### F1 verification notes
 
-- `npm run build` succeeds (51 modules, 378.77 kB JS, 42.05 kB CSS, 3.65 kB A* worker, 3.40 kB walkback worker).
+- `npm run build` succeeds (54 modules, 392.70 kB JS, 52.22 kB CSS, 4.00 kB A* worker, 3.40 kB walkback worker).
 - Headless Chrome check: 4 base radios and 1 overlay checkbox; default gray
   checked; zoom 12; marker popup exact text; no page errors.
 - MOLA hillshade has native tiles only at z0-z6; its URL is unchanged and
@@ -240,7 +253,7 @@ Recommended: the minimum plus F5, F8, F9.
   "Added to route."; route panel shows six unique stops; no errors.
 - Visual sanity: Three Forks near the delta front/base of scarp; Bright Angel
   on the western/northwestern edge; no obvious anomaly.
-- F12: 24 sources and 22 assumptions (17 assumed, 5 sourced); modal opens and
+- F12: 27 sources and 26 assumptions (21 assumed, 5 sourced); modal opens and
   closes with no console errors.
 
 ### F5 verification notes
@@ -308,7 +321,46 @@ Recommended: the minimum plus F5, F8, F9.
   in the F9 test).
 - No git commands were run; no commits.
 
+### Responsive and route-safety verification notes
+
+- `git pull --ff-only` fast-forwarded `afe52d9..a2c578d` (README, thumbnail,
+  route-state fixes and tests) before this pass.
+- `npm run build`: 54 modules, 392.70 kB JS, 52.22 kB CSS, 4.00 kB A* worker,
+  3.40 kB walkback worker. `npm test`: 9/9.
+- Compact layout audited with Chrome 147 headless at 320x640, 390x844,
+  820x1180, 1023x768, 1024x768 and 1280x800 px:
+  - no horizontal overflow at any width; compact topbar 57 px; desktop 46 px.
+  - 320-1023 px: bottom sheet detents 60 px / 56dvh / 92dvh, collapsed layers
+    pill 99x46, attribution 13 px above the peek sheet, zoom anchor 44x44 and
+    hit-testable, overview 44 px.
+  - 1024-1280 px: desktop sidebar 310/340 px; the layers card is collapsed by
+    default up to 1100 px and expanded at 1280 px; zoom at x=332/362 (right of
+    the sidebar), overview centred; no overlap.
+  - all visible route buttons at 390 px measure 44 px; the old 29x13 "change"
+    link is now a 44x44 target. The credits table fits at 362/362 px,
+    the science card and credits modal are full-screen with a 44 px close.
+  - conditions drawer 320x388 at 390 px, close 44 px; layers labels 40 px.
+  - touch emulation: tap-to-set-start collapses the sheet to peek, a second tap
+    sets the point and returns the sheet to half; no page/runtime errors.
+- Route safety audit on the D1 600x600 grid (production `findPath`):
+  - Three Forks preset unchanged: 2.59 km, ascent 47 m, max step 6.6°, no
+    segment above 20°.
+  - Bright Angel preset unchanged: 10.23 km, ascent 297 m, max step 10.8°,
+    max cell slope 15.8°, 0 m above 20°.
+  - 60 random start/end pairs: 0 failures; max step 29.1° -> 23.4°; max length
+    above 20° 339 m -> 80 m; average length 5.73 km unchanged.
+  - A* timings 109.1 ms (Three Forks) and 270.2 ms (Bright Angel) in Node.
+- Terrain panel for Bright Angel shows: steepest step 10.8°, 0 m above 20° and
+  30°, max cell slope 15.8°, highest point -2352 m (+0 m above both ends),
+  0 cliff-adjacent cells, "Gentle terrain".
+- OG metadata: `public/og-image.jpeg` (1280x720, 205,093 B) is copied to
+  `dist/`; `dist/index.html` contains `og:image`, width/height/type/alt and
+  `twitter:card=summary_large_image`. Relative path documented as TODO for
+  deployment.
+
 ## Next step
 
-F5, F6, F8 and F9 plus the UX/UI Tiers 1-4 are done. F10, F11, F13, F14 and
-F15 are not started. No git repository is initialized and no commits were made.
+F5, F6, F8, F9 and the responsive/route-safety pass are done. F10, F11, F13,
+F14 and F15 are not started. The repository is synced with `origin/main` at
+`a2c578d`; this pass is uncommitted. Next: deploy, replace the relative
+`og:image` with an absolute URL, and optionally install GDAL.

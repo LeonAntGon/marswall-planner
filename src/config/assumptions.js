@@ -25,6 +25,45 @@ export const ASSUMPTIONS = {
     assumed: true,
     note: 'F3 blocks cells steeper than this.',
   },
+  routeSteepPenaltyStartDeg: {
+    value: 15,
+    unit: '°',
+    source:
+      'Own assumption: below this slope the A* cost is pure Tobler time; above it a soft terrain-risk penalty is applied',
+    url: null,
+    assumed: true,
+    note:
+      'The penalty only changes the preference between routes. Cells above maxWalkableSlope stay blocked.',
+  },
+  routeSteepPenaltyWeight: {
+    value: 2,
+    unit: 'factor',
+    source:
+      'Own assumption: quadratic penalty that reaches 3x cost at the 30 deg hard limit',
+    url: null,
+    assumed: true,
+    note:
+      'Cost multiplier = 1 + weight * t^2, with t = (slope - start) / (max - start), clamped to 0-1. Calibrated on the D1 grid: it reduces the sampled >20 deg route length by about 75% with no average distance increase.',
+  },
+  routeRidgeWarningM: {
+    value: 25,
+    unit: 'm',
+    source: 'Own assumption for the route terrain warning',
+    url: null,
+    assumed: true,
+    note:
+      'The panel warns when the highest point of the route is more than this far above both endpoints.',
+  },
+  mapClickSnapM: {
+    value: 60,
+    unit: 'm',
+    source:
+      'Own assumption for touch-friendly point picking on the 20 m route grid',
+    url: null,
+    assumed: true,
+    note:
+      'A map tap on a blocked cell snaps to the nearest walkable cell within this radius instead of failing.',
+  },
   suitSpeedFactor: {
     value: 0.5,
     unit: 'fraction',

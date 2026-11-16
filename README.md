@@ -74,7 +74,11 @@ are implemented.
 - F2 slope overlay (600×600 cells, 12×12 km) with below-10° transparent,
   55% default opacity, colour legend and max-slope statistic.
 - F3/F4 route planner: set start/stops/destination, A* with slopes above 30°
-  blocked, route metrics and an SVG elevation profile.
+  blocked, a soft penalty above 15° (so the route avoids steep bands when a
+  reasonable detour exists), a diagonal corner guard and map-tap snapping to
+  the nearest walkable cell. Route metrics, a terrain-risk block (steepest
+  step, length above 20°/30°, highest point above the endpoints, cliff-adjacent
+  cells) and an SVG elevation profile with tap/drag position scrubbing.
 - F5 consumables: energy and O2 bars, a Consumables-at-start slider
   (20–100 %, default 100 %), science-stop energy and a reverse-Dijkstra
   walkback check with a point-of-no-return warning.
@@ -92,8 +96,14 @@ are implemented.
 - F9 emergency return: position slider, marker, lowest-energy path from
   `costToBase`/predecessors, return consumables and OK/NOT ENOUGH status.
 - UX/UI pass: Start/Destination/Science stops stepper, presets, walk summary,
-  mission-assumptions and validation accordions, conditions chip/drawer,
-  responsive sidebar and route legend.
+  terrain risk, mission-assumptions and validation accordions, conditions
+  chip/drawer, responsive route legend and 44 px touch targets.
+- Responsive shell: below 1024 px the planner is a bottom sheet (peek, half and
+  full detents) so the map keeps the full width; the desktop sidebar collapses
+  to a floating button. The Leaflet zoom stays reachable, layers collapse by
+  default on compact screens, and modals become full-screen.
+- Social preview metadata: `public/og-image.jpeg` is linked from Open Graph and
+  Twitter Card tags in `index.html`.
 - Map navigation is locked to the grid plus 30 % padding; tile layers have
   `noWrap`, the initial view fits the grid, and the minimum zoom is the padded
   area fit (no planet-wide view).
@@ -128,8 +138,12 @@ are implemented.
 - F9 follows the lowest-energy walkback path from the selected position; it is
   not a new time-optimal search.
 - The colour bands, suit speed factor, F6 status thresholds, F5 consumables,
-  F8 comparison settings and F9 default position are project assumptions
+  F8 comparison settings, F9 default position, A* steep penalty (15°, weight 2),
+  ridge warning (25 m) and map-tap snap (60 m) are project assumptions
   documented in `src/config/assumptions.js`.
+- The Open Graph/Twitter image uses the relative path `/og-image.jpeg` because
+  the project has no deployment domain yet. Replace it with an absolute URL
+  after deployment; see the TODO in `index.html`.
 
 ## Screenshots
 
@@ -380,11 +394,13 @@ docs/                  Requirements and dataset reference.
 preprocess/            Offline Python pipeline: 02_slope, 03_science_stops, 04_meda, 05_traverse.
 preprocess/raw/        Git-ignored raw downloads, including MEDA CSVs.
 public/data/           Processed F2/F6/F7/F8 outputs served by the app.
+public/og-image.jpeg   1280x720 Open Graph / Twitter preview image.
 scripts/check_tiles.mjs  npm run check:tiles.
 src/config/            layers, sources, assumptions, presets and slope bands.
 src/context/           MapContext and RouteContext.
-src/lib/               marsGeo distances, grid loader, A*, walkback worker, effort, compare and stubs.
+src/lib/               marsGeo distances, grid loader, A*, walkback worker, effort, compare, map fit and media query hook.
 src/components/        MapView, SlopePanel, RoutePanel, ConditionsPanel, ScienceStops, ScienceCard, TraverseLayer, Credits.
+tests/                 node:test suites: effort, route state and A* guards.
 ```
 
 ## Mars geometry
@@ -397,5 +413,6 @@ based and must not be used.
 
 F1–F9 and F12 are implemented. F10, F11, F13, F14 and F15 are not started.
 The repository is initialized on GitHub (LeonAntGon/marswall-planner) with
-commits on `main`. Pending work: public deployment (Vercel/Netlify) and the
+commits on `main`. The responsive/route-safety pass is uncommitted. Pending
+work: public deployment (Vercel/Netlify), an absolute `og:image` URL and the
 NASA Space Apps submission checklist.

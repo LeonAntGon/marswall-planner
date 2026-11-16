@@ -56,14 +56,16 @@ F1 (mapa base), F2 (superposición de pendiente), F3 (ruta A*), F4 (métricas de
 - `L.circleMarker` en el sitio de aterrizaje con el popup “Octavia E. Butler Landing (Perseverance, Mars 2020)”.
 - Los diagnósticos de baldosas están disponibles solo con `?debug=1`; la UI normal no tiene panel de estado de baldosas.
 - Superposición de pendiente F2 (600×600 celdas, 12×12 km) con transparencia por debajo de 10°, opacidad predeterminada del 55 %, leyenda de colores y estadística de pendiente máxima.
-- Planificador de rutas F3/F4: establecer inicio/paradas/destino, A* con pendientes superiores a 30° bloqueadas, métricas de ruta y un perfil de elevación SVG.
+- Planificador de rutas F3/F4: establecer inicio/paradas/destino, A* con pendientes superiores a 30° bloqueadas, una penalización suave por encima de 15° (para evitar franjas empinadas cuando hay un desvío razonable), guardia de esquina en diagonales y ajuste del toque del mapa a la celda caminable más cercana. Métricas, bloque de riesgo del terreno (pendiente máxima del paso, longitud por encima de 20°/30°, punto más alto respecto de los extremos, celdas junto a acantilados) y perfil de elevación SVG con arrastre de posición.
 - Consumibles F5: barras de energía y O2, un slider de Consumibles al inicio (20–100 %, predeterminado 100 %), energía de parada científica y una comprobación de caminata de regreso de Dijkstra inversa con advertencia de punto de no retorno.
 - Tiempo de ida y vuelta F5: caminata de ida + tiempo en paradas + caminata de regreso a lo largo de la ruta de caminata de regreso, verificado contra la duración EVA de 8 h y la ventana de luz diurna de 6 h.
 - Panel de condiciones F6 desde MEDA: temperatura de todo el sol, mínimo de la ventana EVA (09:00–15:00 LMST) para el estado, presión como información solo, radiación solar y viento.
 - F7 seis paradas científicas con tarjetas de detalle y **Agregar a la ruta**.
 - F8 capa de recorrido de Perseverance (línea D5 recortada) y una comparación de función pura: media/mediana/máximo de distancia y cobertura dentro de 50/100/200 m. También muestre `slope.bin` cada 20 m y compara media/mediana/máximo de pendiente y el porcentaje por encima de 10°/20° para el recorrido del rover y nuestra ruta.
 - Regreso de emergencia F9: slider de posición, marcador, camino de menor energía desde `costToBase`/predecesores, consumibles de regreso y estado OK/NO SUFICIENTE.
-- Paso UX/UI: stepper Inicio/Destino/Paradas científicas, presets, resumen de caminata, acordeones de supuestos de misión y validación, chip/drawer de condiciones, barra lateral responsiva y leyenda de ruta.
+- Paso UX/UI: stepper Inicio/Destino/Paradas científicas, presets, resumen de caminata, riesgo del terreno, acordeones de supuestos de misión y validación, chip/drawer de condiciones, leyenda de ruta responsive y objetivos táctiles de 44 px.
+- Shell responsive: por debajo de 1024 px el planificador es una hoja inferior con detentes peek/media/completa para que el mapa conserve todo el ancho; la barra lateral de escritorio se colapsa a un botón flotante. El zoom de Leaflet queda accesible, las capas se colapsan por defecto en compacto y los modales ocupan toda la pantalla.
+- Metadatos de vista previa social: `public/og-image.jpeg` enlazada desde Open Graph y Twitter Card en `index.html`.
 - La navegación del mapa está bloqueada a la grid más 30 % de relleno; las capas de baldosas tienen `noWrap`, la vista inicial ajusta a la grid, y el zoom mínimo es el ajuste al área acolchada (sin vista planetaria completa).
 - El modal F12 Datos y Créditos se genera desde `sources.js` y `assumptions.js`, con insignias assumed/sourced.
 - La instancia del mapa se expone a través de `MapContext` para características futuras.
@@ -80,7 +82,8 @@ F1 (mapa base), F2 (superposición de pendiente), F3 (ruta A*), F4 (métricas de
 - F5 es un modelo de primer orden Minetti con un escalado de gravedad marciana de primer orden (3.71/9.81). No es un modelo de fisiología EVA validado.
 - F8 compara contra un recorrido recortado a la grid de 12×12 km y simplificado porque el archivo recortado superó los 500 kB. El rover es una comprobación de cordura, no verdad de fondo: ruedas, peligros y objetivos científicos imponen diferentes restricciones.
 - F9 sigue el camino de caminata de regreso de menor energía desde la posición seleccionada; no es una nueva búsqueda de tiempo óptimo.
-- Las bandas de color, el factor de velocidad del traje, los umbrales de estado F6, los consumibles F5, la configuración de comparación F8 y la posición predeterminada F9 son supuestos del proyecto documentados en `src/config/assumptions.js`.
+- Las bandas de color, el factor de velocidad del traje, los umbrales de estado F6, los consumibles F5, la configuración de comparación F8, la posición predeterminada F9, la penalización de pendiente del A* (15°, peso 2), la advertencia de cresta (25 m) y el ajuste del toque del mapa (60 m) son supuestos del proyecto documentados en `src/config/assumptions.js`.
+- La imagen Open Graph/Twitter usa la ruta relativa `/og-image.jpeg` porque el proyecto aún no tiene un dominio de despliegue. Reemplazarla por una URL absoluta después de desplegar; ver el TODO en `index.html`.
 
 ## Capturas de pantalla
 
@@ -294,4 +297,4 @@ Todas las distancias geográficas pasan por `src/lib/marsGeo.js`, usando el radi
 ## Próximo paso
 
 F1–F9 y F12 están implementados. F10, F11, F13, F14 y F15 no se han iniciado.
-El repositorio está inicializado en GitHub (LeonAntGon/marswall-planner) con confirmaciones en `main`. Trabajo pendiente: despliegue público (Vercel/Netlify) y la lista de verificación de envío del NASA Space Apps.
+El repositorio está inicializado en GitHub (LeonAntGon/marswall-planner) con confirmaciones en `main`. La pasada responsive/riesgo de ruta está sin confirmar. Trabajo pendiente: despliegue público (Vercel/Netlify), URL absoluta de `og:image` y la lista de verificación de envío del NASA Space Apps.

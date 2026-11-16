@@ -13,6 +13,10 @@ const ASSUMPTION_LABELS = {
   marsRadius: 'Mars radius',
   marsGravity: 'Mars gravity',
   maxWalkableSlope: 'Max walkable slope',
+  routeSteepPenaltyStartDeg: 'A* steep penalty start',
+  routeSteepPenaltyWeight: 'A* steep penalty weight',
+  routeRidgeWarningM: 'Route ridge warning',
+  mapClickSnapM: 'Map click snap radius',
   suitSpeedFactor: 'Suit speed factor',
   astronautSuitMass: 'Astronaut + suit mass',
   suitDuration: 'Suit duration',
@@ -201,9 +205,13 @@ export default function Credits({ open, onClose }) {
                 <tbody>
                   {Object.entries(ASSUMPTIONS).map(([key, entry]) => (
                     <tr key={key}>
-                      <td>{ASSUMPTION_LABELS[key] || prettifyKey(key)}</td>
-                      <td>{formatAssumptionValue(key, entry)}</td>
-                      <td>
+                      <td data-label="Assumption">
+                        {ASSUMPTION_LABELS[key] || prettifyKey(key)}
+                      </td>
+                      <td data-label="Value">
+                        {formatAssumptionValue(key, entry)}
+                      </td>
+                      <td data-label="Source">
                         {entry.source}
                         {entry.url && (
                           <>
@@ -218,7 +226,7 @@ export default function Credits({ open, onClose }) {
                           </>
                         )}
                       </td>
-                      <td>
+                      <td data-label="Assumed">
                         <span
                           className={
                             entry.assumed

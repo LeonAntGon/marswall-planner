@@ -100,3 +100,39 @@ export function isBlockedCell(slope, col, row, grid, maxSlopeDeg) {
     value > maxSlopeDeg
   );
 }
+
+/**
+ * Nearest walkable cell to a tapped cell. Returns null when no walkable cell
+ * exists inside the requested radius. Distance is reported in cells so the
+ * caller can convert it with the grid cell size.
+ */
+export function findNearestWalkableCell(
+  slope,
+  col,
+  row,
+  grid,
+  maxSlopeDeg,
+  radiusCells
+) {
+  if (!isBlockedCell(slope, col, row, grid, maxSlopeDeg)) {
+    return { col, row, distanceCells: 0 };
+  }
+
+  let best = null;
+  const radius = Math.max(1, Math.floor(radiusCells));
+  for (let dr = -radius; dr <= radius; dr += 1) {
+    for (let dc = -radius; dc <= radius; dc += 1) {
+      if (dc === 0 && dr === 0) continue;
+      const candidateCol = col + dc;
+      const candidateRow = row + dr;
+      if (isBlockedCell(slope, candidateCol, candidateRow, grid, maxSlopeDeg)) {
+        continue;
+      }
+      const distanceCells = Math.hypot(dc, dr);
+      if (!best || distanceCells < best.distanceCells) {
+        best = { col: candidateCol, row: candidateRow, distanceCells };
+      }
+    }
+  }
+  return best;
+}

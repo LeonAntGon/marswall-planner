@@ -13,10 +13,12 @@ import {
 } from '../config/presets.js';
 import {
   cellToLatLon,
+  findNearestWalkableCell,
   isBlockedCell,
   latLonToCell,
 } from '../lib/gridData.js';
 import { isEmergencyCurrent, sameRouteInputs } from '../lib/routeState.js';
+import { fitMapBounds } from '../lib/mapFit.js';
 
 const MAX_SLOPE = ASSUMPTIONS.maxWalkableSlope.value;
 const SUIT_FACTOR = ASSUMPTIONS.suitSpeedFactor.value;
@@ -34,7 +36,12 @@ function formatDuration(seconds) {
   return `${hours} h ${minutes} min`;
 }
 
-function computeMetrics(points) {
+function formatMeters(meters) {
+  if (!Number.isFinite(meters)) return '—';
+  return meters >= 1000 ? `${(meters / 1000).toFixed(2)} km` : `${Math.round(meters)} m`;
+}
+
+function computeMetrics(points, gridData) {
   if (!points || points.length === 0) return null;
   if (points.length === 1) {
     return {
@@ -42,6 +49,13 @@ function computeMetrics(points) {
       ascentM: 0,
       descentM: 0,
       maxSlopeDeg: points[0].slope,
+      maxStepSlopeDeg: 0,
+      steep20M: 0,
+      steep30M: 0,
+      stepSlopes: [null],
+      highestPoint: points[0],
+      highestAboveEnds: 0,
+      cliffCells: 0,
       timeSeconds: 0,
       profile: null,
     };
@@ -51,8 +65,12 @@ function computeMetrics(points) {
   let ascentM = 0;
   let descentM = 0;
   let maxSlopeDeg = 0;
+  let maxStepSlopeDeg = 0;
+  let steep20M = 0;
+  let steep30M = 0;
   let cumulativeM = 0;
-  const profile = [{ d: 0, elev: points[0].elev }];
+  const stepSlopes = [null];
+  const profile = [{ d: 0, elev: points[0].elev, slopeDeg: null }];
 
   for (let i = 0; i < points.length; i += 1) {
     maxSlopeDeg = Math.max(maxSlopeDeg, points[i].slope);
@@ -71,7 +89,44 @@ function computeMetrics(points) {
     if (dz > 0) ascentM += dz;
     else descentM -= dz;
 
-    profile.push({ d: cumulativeM, elev: current.elev });
+    const stepSlopeDeg =
+      distance > 0 ? (Math.atan2(Math.abs(dz), distance) * 180) / Math.PI : 0;
+    maxStepSlopeDeg = Math.max(maxStepSlopeDeg, stepSlopeDeg);
+    if (stepSlopeDeg > 20) steep20M += distance;
+    if (stepSlopeDeg > 30) steep30M += distance;
+    stepSlopes.push(stepSlopeDeg);
+
+    profile.push({ d: cumulativeM, elev: current.elev, slopeDeg: stepSlopeDeg });
+  }
+
+  let highestPoint = points[0];
+  for (const point of points) {
+    if (point.elev > highestPoint.elev) highestPoint = point;
+  }
+  const highestAboveEnds =
+    highestPoint.elev -
+    Math.max(points[0].elev, points[points.length - 1].elev);
+
+  let cliffCells = 0;
+  if (gridData?.slope && gridData?.grid) {
+    const { rows, cols, nodata } = gridData.grid;
+    for (const point of points) {
+      let nearCliff = false;
+      for (let dr = -1; dr <= 1 && !nearCliff; dr += 1) {
+        for (let dc = -1; dc <= 1; dc += 1) {
+          if (dc === 0 && dr === 0) continue;
+          const col = point.col + dc;
+          const row = point.row + dr;
+          if (col < 0 || col >= cols || row < 0 || row >= rows) continue;
+          const value = gridData.slope[row * cols + col];
+          if (Number.isFinite(value) && value !== nodata && value > MAX_SLOPE) {
+            nearCliff = true;
+            break;
+          }
+        }
+      }
+      if (nearCliff) cliffCells += 1;
+    }
   }
 
   return {
@@ -79,6 +134,13 @@ function computeMetrics(points) {
     ascentM,
     descentM,
     maxSlopeDeg,
+    maxStepSlopeDeg,
+    steep20M,
+    steep30M,
+    stepSlopes,
+    highestPoint,
+    highestAboveEnds,
+    cliffCells,
     timeSeconds: walkingTimeSeconds(points, SUIT_FACTOR),
     profile,
   };
@@ -120,23 +182,38 @@ function ElevationProfile({ profile, safety, stopIndices = [], currentIndex, onS
   if (!profile || profile.length < 2) return null;
 
   const width = 260;
-  const height = 64;
-  const pad = 3;
+  const height = 84;
+  const padLeft = 30;
+  const padRight = 5;
+  const padTop = 5;
+  const padBottom = 14;
   const total = profile[profile.length - 1].d || 1;
   const elevations = profile.map((point) => point.elev);
   const minElev = Math.min(...elevations);
   const maxElev = Math.max(...elevations);
   const span = Math.max(1, maxElev - minElev);
+  const plotWidth = width - padLeft - padRight;
+  const plotHeight = height - padTop - padBottom;
 
-  const pointList = profile
-    .map((point) => {
-      const x = pad + (point.d / total) * (width - pad * 2);
-      const y =
-        pad + (1 - (point.elev - minElev) / span) * (height - pad * 2);
-      return { x: x.toFixed(1), y: y.toFixed(1), value: `${x.toFixed(1)},${y.toFixed(1)}` };
-    })
-    ;
+  const xOf = (distance) => padLeft + (distance / total) * plotWidth;
+  const yOf = (elev) => padTop + (1 - (elev - minElev) / span) * plotHeight;
+
+  const pointList = profile.map((point) => ({
+    x: xOf(point.d).toFixed(1),
+    y: yOf(point.elev).toFixed(1),
+    value: `${xOf(point.d).toFixed(1)},${yOf(point.elev).toFixed(1)}`,
+  }));
   const points = pointList.map((point) => point.value).join(' ');
+
+  const updateFromEvent = (event) => {
+    if (!onSelect) return;
+    const rect = event.currentTarget.ownerSVGElement.getBoundingClientRect();
+    const fraction = Math.max(
+      0,
+      Math.min(1, (event.clientX - rect.left) / rect.width)
+    );
+    onSelect(Math.round(fraction * (profile.length - 1)));
+  };
 
   return (
     <div className="route-profile">
@@ -149,16 +226,42 @@ function ElevationProfile({ profile, safety, stopIndices = [], currentIndex, onS
       <svg
         viewBox={`0 0 ${width} ${height}`}
         role="img"
-        aria-label="Elevation profile of the route"
+        aria-label="Elevation profile of the route. Drag to move the simulated position."
       >
+        <text
+          x={padLeft - 3}
+          y={padTop + 4}
+          textAnchor="end"
+          className="profile-axis-label"
+        >
+          {maxElev.toFixed(0)}
+        </text>
+        <text
+          x={padLeft - 3}
+          y={height - padBottom}
+          textAnchor="end"
+          className="profile-axis-label"
+        >
+          {minElev.toFixed(0)}
+        </text>
+        <line
+          x1={padLeft}
+          y1={pointList[0].y}
+          x2={width - padRight}
+          y2={pointList[0].y}
+          stroke="#5f7183"
+          strokeWidth="0.8"
+          strokeDasharray="2 3"
+        />
         <polygon
-          points={`${pad},${height - pad} ${points} ${width - pad},${
-            height - pad
-          }`}
+          points={`${padLeft},${height - padBottom} ${points} ${
+            width - padRight
+          },${height - padBottom}`}
           fill="rgba(0, 229, 255, 0.12)"
         />
         {pointList.slice(1).map((point, index) => {
           const unsafe = safety?.[index + 1]?.safe === false;
+          const steep = (profile[index + 1]?.slopeDeg ?? 0) > 20;
           return (
             <line
               key={`profile-segment-${index}`}
@@ -166,8 +269,8 @@ function ElevationProfile({ profile, safety, stopIndices = [], currentIndex, onS
               y1={pointList[index].y}
               x2={point.x}
               y2={point.y}
-              stroke={unsafe ? '#ff4d4d' : '#00e5ff'}
-              strokeWidth="1.5"
+              stroke={unsafe ? '#ff4d4d' : steep ? '#ffb020' : '#00e5ff'}
+              strokeWidth={steep && !unsafe ? 2 : 1.5}
               strokeLinejoin="round"
               strokeLinecap="round"
             />
@@ -187,13 +290,46 @@ function ElevationProfile({ profile, safety, stopIndices = [], currentIndex, onS
             fill="#ff6bd6"
           />
         )}
-        <polyline points={points} fill="none" stroke="transparent" strokeWidth="12" onMouseMove={(event) => {
-          if (!onSelect) return;
-          const rect = event.currentTarget.ownerSVGElement.getBoundingClientRect();
-          const fraction = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
-          onSelect(Math.round(fraction * (profile.length - 1)));
-        }} />
+        <text
+          x={padLeft}
+          y={height - 3}
+          textAnchor="start"
+          className="profile-axis-label"
+        >
+          0 km
+        </text>
+        <text
+          x={width - padRight}
+          y={height - 3}
+          textAnchor="end"
+          className="profile-axis-label"
+        >
+          {(total / 1000).toFixed(1)} km
+        </text>
+        <rect
+          x={padLeft}
+          y={padTop}
+          width={plotWidth}
+          height={plotHeight}
+          fill="transparent"
+          style={{ cursor: 'crosshair' }}
+          onPointerDown={(event) => {
+            event.currentTarget.setPointerCapture(event.pointerId);
+            updateFromEvent(event);
+          }}
+          onPointerMove={(event) => {
+            if (event.buttons) updateFromEvent(event);
+          }}
+          onPointerUp={(event) => {
+            if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+              event.currentTarget.releasePointerCapture(event.pointerId);
+            }
+          }}
+        />
       </svg>
+      <div className="route-profile__hint">
+        Tap or drag the profile to simulate a position on the route.
+      </div>
     </div>
   );
 }
@@ -223,7 +359,7 @@ function ConsumableBar({ label, used, capacity, remaining, unit }) {
   );
 }
 
-export default function RoutePanel() {
+export default function RoutePanel({ onPickModeChange, onRoutePlanned } = {}) {
   const { map } = useMap();
   const { gridData, gridError, stops, setStops, walkback, setWalkback } =
     useRoute();
@@ -234,6 +370,7 @@ export default function RoutePanel() {
   const [metrics, setMetrics] = useState(null);
   const [routeError, setRouteError] = useState(null);
   const [walkbackError, setWalkbackError] = useState(null);
+  const [pickNotice, setPickNotice] = useState(null);
   const [calculating, setCalculating] = useState(false);
   const [consumablesPercent, setConsumablesPercent] = useState(
     ASSUMPTIONS.consumablesStartPercent.value
@@ -297,6 +434,7 @@ export default function RoutePanel() {
     setComparing(false);
     setEmergency(null);
     setPositionPercent(ASSUMPTIONS.emergencyPositionDefaultPercent.value);
+    onRoutePlanned?.(null);
   }, [start, stops, destination, setWalkback]);
 
   const effort = useMemo(() => {
@@ -389,6 +527,40 @@ export default function RoutePanel() {
       o2RemainingL: (effort.capacityJ - cumulative.totalJ) / (ASSUMPTIONS.oxygenEnergy.value * 1000),
     };
   }, [route, metrics, effort, positionIndex, stopIndices]);
+  const terrainRisk = useMemo(() => {
+    if (!metrics) return null;
+    if (metrics.steep30M > 0) {
+      return {
+        level: 'danger',
+        label: `Crosses ${formatMeters(metrics.steep30M)} above 30°`,
+      };
+    }
+    if (metrics.cliffCells > 0) {
+      return {
+        level: 'warning',
+        label: `Runs beside a >30° cliff for ${metrics.cliffCells} cells`,
+      };
+    }
+    if (metrics.steep20M > 0) {
+      return {
+        level: 'warning',
+        label: `${formatMeters(metrics.steep20M)} above 20°`,
+      };
+    }
+    if (
+      metrics.maxStepSlopeDeg >
+      ASSUMPTIONS.routeSteepPenaltyStartDeg.value
+    ) {
+      return {
+        level: 'warning',
+        label: `Steepest step ${metrics.maxStepSlopeDeg.toFixed(1)}°`,
+      };
+    }
+    return {
+      level: 'safe',
+      label: `Gentle terrain: no step above ${ASSUMPTIONS.routeSteepPenaltyStartDeg.value}°`,
+    };
+  }, [metrics]);
   const shownEmergency = isEmergencyCurrent(emergency, {
     positionPercent,
     consumablesPercent,
@@ -455,7 +627,8 @@ export default function RoutePanel() {
 
     const handleClick = (event) => {
       if (!mode) return;
-      const cell = latLonToCell(event.latlng.lat, event.latlng.lng, gridData.grid);
+      setPickNotice(null);
+      let cell = latLonToCell(event.latlng.lat, event.latlng.lng, gridData.grid);
       if (!cell) {
         const widthKm = (gridData.grid.cols * gridData.grid.cellSizeMeters.x) / 1000;
         const heightKm = (gridData.grid.rows * gridData.grid.cellSizeMeters.y) / 1000;
@@ -464,11 +637,34 @@ export default function RoutePanel() {
         );
         return;
       }
-      if (isBlockedCell(gridData.slope, cell.col, cell.row, gridData.grid, MAX_SLOPE)) {
-        setRouteError(
-          `This cell is blocked (slope above ${MAX_SLOPE}° or NoData).`
+
+      let snappedM = 0;
+      if (
+        isBlockedCell(gridData.slope, cell.col, cell.row, gridData.grid, MAX_SLOPE)
+      ) {
+        const radiusM = ASSUMPTIONS.mapClickSnapM.value;
+        const radiusCells = Math.max(
+          1,
+          Math.ceil(radiusM / gridData.grid.cellSizeMeters.x)
         );
-        return;
+        const nearest = findNearestWalkableCell(
+          gridData.slope,
+          cell.col,
+          cell.row,
+          gridData.grid,
+          MAX_SLOPE,
+          radiusCells
+        );
+        if (!nearest) {
+          setRouteError(
+            `No walkable cell within ${radiusM} m of this point.`
+          );
+          return;
+        }
+        snappedM = Math.round(
+          nearest.distanceCells * gridData.grid.cellSizeMeters.x
+        );
+        cell = { col: nearest.col, row: nearest.row };
       }
 
       const { lat, lon } = cellToLatLon(cell.col, cell.row, gridData.grid);
@@ -478,7 +674,13 @@ export default function RoutePanel() {
       else if (mode === 'destination') setDestination(point);
       else setStops((previous) => [...previous, point]);
 
+      setPickNotice(
+        snappedM > 0
+          ? `Snapped ${snappedM} m to the nearest walkable cell.`
+          : null
+      );
       setMode(null);
+      onPickModeChange?.(false);
       setRouteError(null);
     };
 
@@ -497,9 +699,9 @@ export default function RoutePanel() {
 
     const group = L.featureGroup().addTo(map);
 
-    const addPointMarker = (point, label, color, radius = 6) => {
+    const addPointMarker = (point, label, color, radius = 6, permanent = true) => {
       if (!point) return;
-      L.circleMarker([point.lat, point.lon], {
+      const marker = L.circleMarker([point.lat, point.lon], {
         radius,
         color: '#ffffff',
         weight: 2,
@@ -507,25 +709,35 @@ export default function RoutePanel() {
         fillOpacity: 0.95,
       })
         .bindPopup(label)
-        .bindTooltip(label, {
+        .addTo(group);
+      if (permanent) {
+        marker.bindTooltip(label, {
           permanent: true,
           direction: 'top',
           offset: [0, -10],
           className: 'point-label',
-        })
-        .addTo(group);
+        });
+      } else {
+        marker.bindTooltip(label, {
+          direction: 'top',
+          offset: [0, -10],
+          className: 'point-label',
+        });
+      }
     };
 
     addPointMarker(start, 'Start', '#2ecc71', 8);
     stops.forEach((stop, index) => {
-      addPointMarker(stop, `Stop ${index + 1}`, '#f2c14e', 6);
+      addPointMarker(stop, `Stop ${index + 1}`, '#f2c14e', 6, false);
     });
     addPointMarker(destination, 'Destination', '#e74c3c', 8);
     if (positionPoint) {
       addPointMarker(
         positionPoint,
         `Route position ${positionPercent}%`,
-        '#ff6bd6'
+        '#ff6bd6',
+        6,
+        false
       );
     }
 
@@ -541,6 +753,47 @@ export default function RoutePanel() {
         weight: 3.5,
         opacity: 0.95,
       }).addTo(group);
+
+      if (metrics?.stepSlopes) {
+        for (let index = 1; index < route.length; index += 1) {
+          if ((metrics.stepSlopes[index] ?? 0) > 20) {
+            L.polyline(
+              [
+                [route[index - 1].lat, route[index - 1].lon],
+                [route[index].lat, route[index].lon],
+              ],
+              {
+                color: '#ffb020',
+                weight: 4.5,
+                opacity: 0.95,
+              }
+            ).addTo(group);
+          }
+        }
+      }
+
+      if (metrics?.highestPoint && metrics.highestAboveEnds > 0) {
+        L.circleMarker(
+          [metrics.highestPoint.lat, metrics.highestPoint.lon],
+          {
+            radius: 5,
+            color: '#ffffff',
+            weight: 2,
+            fillColor: '#ffb020',
+            fillOpacity: 0.95,
+          }
+        )
+          .bindTooltip(
+            `Highest point ${metrics.highestPoint.elev.toFixed(0)} m`,
+            {
+              permanent: true,
+              direction: 'top',
+              offset: [0, -8],
+              className: 'point-label',
+            }
+          )
+          .addTo(group);
+      }
 
       if (effort?.safety) {
         for (let index = 1; index < route.length; index += 1) {
@@ -590,6 +843,7 @@ export default function RoutePanel() {
     destination,
     route,
     effort,
+    metrics,
     positionPoint,
     positionPercent,
     shownEmergency,
@@ -646,6 +900,7 @@ export default function RoutePanel() {
     setComparisonError(null);
     setComparing(false);
     setEmergency(null);
+    onRoutePlanned?.(null);
 
     const runAstar = () =>
       new Promise((resolve, reject) => {
@@ -801,7 +1056,20 @@ export default function RoutePanel() {
         });
 
         setRoute(points);
-        setMetrics(computeMetrics(points));
+        const nextMetrics = computeMetrics(points, gridData);
+        setMetrics(nextMetrics);
+        onRoutePlanned?.({
+          distanceKm: nextMetrics.totalM / 1000,
+          timeText: formatDuration(nextMetrics.timeSeconds),
+          warning:
+            nextMetrics.steep30M > 0 ||
+            nextMetrics.cliffCells > 0 ||
+            nextMetrics.steep20M > 0 ||
+            nextMetrics.maxStepSlopeDeg >
+              ASSUMPTIONS.routeSteepPenaltyStartDeg.value,
+        });
+        requestAnimationFrame(() => fitRoute(points));
+        setTimeout(() => fitRoute(points), 280);
         if (walkbackResult.error) {
           setWalkbackError(walkbackResult.error);
           setWalkback(null);
@@ -875,6 +1143,7 @@ export default function RoutePanel() {
     if (!cell) return;
     setStart({ ...cell, ...cellToLatLon(cell.col, cell.row, gridData.grid) });
     setMode(null);
+    onPickModeChange?.(false);
   };
 
   const runEmergency = () => {
@@ -984,10 +1253,37 @@ export default function RoutePanel() {
     setComparing(false);
     setEmergency(null);
     setPositionPercent(ASSUMPTIONS.emergencyPositionDefaultPercent.value);
+    setPickNotice(null);
+    onRoutePlanned?.(null);
+    onPickModeChange?.(false);
   };
 
   const removeStop = (index) => {
     setStops((previous) => previous.filter((_, i) => i !== index));
+  };
+
+  const startPick = (nextMode) => {
+    const next = mode === nextMode ? null : nextMode;
+    setMode(next);
+    setPickNotice(null);
+    setRouteError(null);
+    onPickModeChange?.(Boolean(next));
+  };
+
+  const cancelPick = () => {
+    setMode(null);
+    setPickNotice(null);
+    onPickModeChange?.(false);
+  };
+
+  const fitRoute = (points = route) => {
+    if (!map || !points || points.length < 2) return;
+    const bounds = L.latLngBounds(points.map((point) => [point.lat, point.lon]));
+    try {
+      fitMapBounds(map, bounds, { maxZoom: 14 });
+    } catch {
+      // The map may have been removed while a delayed fit was pending.
+    }
   };
 
   const modeLabel =
@@ -1013,6 +1309,21 @@ export default function RoutePanel() {
         <span className="route-panel__tag">A* · 20 m</span>
       </div>
 
+      {route && metrics && (
+        <div className={`route-quick is-${terrainRisk?.level || 'safe'}`}>
+          <div className="route-quick__main">
+            <strong>{(metrics.totalM / 1000).toFixed(2)} km</strong>
+            <span>{formatDuration(metrics.timeSeconds)}</span>
+            {roundTrip && (
+              <span>round trip {formatDuration(roundTrip.totalSeconds)}</span>
+            )}
+          </div>
+          <div className="route-quick__risk">
+            {terrainRisk?.label || 'Terrain not assessed'}
+          </div>
+        </div>
+      )}
+
       {gridError && <div className="route-panel__error">{gridError}</div>}
       {!gridError && !gridData && (
         <div className="route-panel__muted">Loading slope grid...</div>
@@ -1032,21 +1343,21 @@ export default function RoutePanel() {
             <button
               type="button"
               className={mode === 'start' ? 'is-active' : ''}
-              onClick={() => setMode('start')}
+              onClick={() => startPick('start')}
             >
               Set start
             </button>
             <button
               type="button"
               className={mode === 'stop' ? 'is-active' : ''}
-              onClick={() => setMode('stop')}
+              onClick={() => startPick('stop')}
             >
               Add stop
             </button>
             <button
               type="button"
               className={mode === 'destination' ? 'is-active' : ''}
-              onClick={() => setMode('destination')}
+              onClick={() => startPick('destination')}
             >
               Set destination
             </button>
@@ -1054,8 +1365,14 @@ export default function RoutePanel() {
 
           {modeLabel && (
             <div className="route-panel__hint">
-              Click the map to set {modeLabel}.
+              <span>Tap the map to set {modeLabel}.</span>
+              <button type="button" className="route-panel__link" onClick={cancelPick}>
+                Cancel
+              </button>
             </div>
+          )}
+          {pickNotice && (
+            <div className="route-panel__notice">{pickNotice}</div>
           )}
 
           <div className="route-stepper" aria-label="Marswalk planning steps">
@@ -1063,19 +1380,19 @@ export default function RoutePanel() {
               <span>1</span>
               <strong>Start</strong>
               <small>{start ? formatPoint(start) : 'Choose a start point'}</small>
-              <button type="button" onClick={() => setMode('start')}>change</button>
+              <button type="button" onClick={() => startPick('start')}>change</button>
             </div>
             <div className={`route-step${mode === 'destination' || (start && !destination) ? ' is-active' : ''}`}>
               <span>2</span>
               <strong>Destination</strong>
               <small>{destination ? formatPoint(destination) : 'Choose a destination'}</small>
-              <button type="button" onClick={() => setMode('destination')}>change</button>
+              <button type="button" onClick={() => startPick('destination')}>change</button>
             </div>
             <div className={`route-step${mode === 'stop' || (start && destination) ? ' is-active' : ''}`}>
               <span>3</span>
               <strong>Science stops (optional)</strong>
               <small>{stops.length ? `${stops.length} selected` : 'Optional'}</small>
-              <button type="button" onClick={() => setMode('stop')}>change</button>
+              <button type="button" onClick={() => startPick('stop')}>change</button>
             </div>
           </div>
           {!start && (
@@ -1175,6 +1492,8 @@ export default function RoutePanel() {
             <div className="mission-assumptions__row"><span>EVA duration</span><strong>{ASSUMPTIONS.suitDuration.value} h <em>assumed</em></strong></div>
             <div className="mission-assumptions__row"><span>Return margin</span><strong>{ASSUMPTIONS.returnMargin.value * 100}% <em>assumed</em></strong></div>
             <div className="mission-assumptions__row"><span>Suit speed factor</span><strong>{SUIT_FACTOR} <em>assumed</em></strong></div>
+            <div className="mission-assumptions__row"><span>A* steep penalty</span><strong>{ASSUMPTIONS.routeSteepPenaltyStartDeg.value}° · weight {ASSUMPTIONS.routeSteepPenaltyWeight.value} <em>assumed</em></strong></div>
+            <div className="mission-assumptions__row"><span>Map tap snap</span><strong>{ASSUMPTIONS.mapClickSnapM.value} m <em>assumed</em></strong></div>
           </details>
 
           {routeError && <div className="route-panel__error">{routeError}</div>}
@@ -1185,70 +1504,118 @@ export default function RoutePanel() {
           )}
 
           {metrics && (
-            <section className="walk-summary" aria-label="Walk summary">
+            <section className="walk-summary" aria-label="Walk summary" aria-live="polite">
               <div className="route-panel__section-title">Walk summary</div>
               <div className="walk-summary__grid">
                 <div><span>Distance</span><strong>{(metrics.totalM / 1000).toFixed(2)} km</strong></div>
                 <div><span>Walking time</span><strong>{formatDuration(metrics.timeSeconds)}</strong></div>
-                <div><span>Time at stops</span><strong>{effort ? `${effort.stopMinutes} min` : '—'}</strong></div>
                 <div><span>Round trip</span><strong>{roundTrip ? formatDuration(roundTrip.totalSeconds) : '—'}</strong></div>
-                <div><span>Energy used</span><strong>{effort ? `${(effort.energyUsedJ / 1000).toFixed(0)} kJ · ${(effort.energyPercent).toFixed(1)}%` : '—'}</strong></div>
-                <div><span>O2 used</span><strong>{effort ? `${effort.o2UsedL.toFixed(1)} L · ${(effort.o2Percent).toFixed(1)}%` : '—'}</strong></div>
-                <div><span>Max slope</span><strong>{metrics.maxSlopeDeg.toFixed(1)}°</strong></div>
+                <div><span>Max slope</span><strong>{metrics.maxStepSlopeDeg.toFixed(1)}°</strong></div>
                 <div><span>Ascent / descent</span><strong>{metrics.ascentM.toFixed(0)} / {metrics.descentM.toFixed(0)} m</strong></div>
-                <div><span>Science stops</span><strong>{stops.length}</strong></div>
+                <div><span>Highest point</span><strong>{metrics.highestPoint.elev.toFixed(0)} m</strong></div>
+                <div className="walk-summary__wide">
+                  <span>Energy used</span>
+                  <strong>{effort ? `${(effort.energyUsedJ / 1000).toFixed(0)} kJ` : '—'}</strong>
+                  {effort && <small>{effort.energyPercent.toFixed(1)}% of capacity</small>}
+                </div>
+                <div className="walk-summary__wide">
+                  <span>O2 used</span>
+                  <strong>{effort ? `${effort.o2UsedL.toFixed(1)} L` : '—'}</strong>
+                  {effort && <small>{effort.o2Percent.toFixed(1)}% of capacity</small>}
+                </div>
               </div>
-              <div className={`walk-summary__verdict ${effort?.firstUnsafe ? 'is-danger' : roundTrip?.exceedsDuration || roundTrip?.exceedsWindow ? 'is-warning' : 'is-safe'}`}>
+              <div className={`walk-summary__verdict ${
+                effort?.firstUnsafe || terrainRisk?.level === 'danger'
+                  ? 'is-danger'
+                  : terrainRisk?.level === 'warning' ||
+                      roundTrip?.exceedsDuration ||
+                      roundTrip?.exceedsWindow
+                    ? 'is-warning'
+                    : 'is-safe'
+              }`}>
                 {effort?.firstUnsafe
                   ? `Point of no return at ${(effort.firstUnsafe.index / Math.max(1, route.length - 1) * metrics.totalM / 1000).toFixed(2)} km`
-                  : roundTrip?.exceedsDuration || roundTrip?.exceedsWindow
-                    ? 'Round trip has EVA time warnings'
-                    : 'Safe to walk and return'}
+                  : terrainRisk?.level === 'danger' || terrainRisk?.level === 'warning'
+                    ? terrainRisk.label
+                    : roundTrip?.exceedsDuration || roundTrip?.exceedsWindow
+                      ? 'Round trip has EVA time warnings'
+                      : 'Safe to walk and return'}
               </div>
+            </section>
+          )}
+
+          {metrics && terrainRisk && (
+            <section className="route-terrain" aria-label="Terrain risk">
+              <div className="route-panel__section-title">Terrain risk</div>
+              <div className="route-panel__time-row">
+                <span>Steepest step</span>
+                <strong>{metrics.maxStepSlopeDeg.toFixed(1)}°</strong>
+              </div>
+              <div className="route-panel__time-row">
+                <span>Above 20°</span>
+                <strong>{formatMeters(metrics.steep20M)}</strong>
+              </div>
+              <div className="route-panel__time-row">
+                <span>Above 30°</span>
+                <strong>{formatMeters(metrics.steep30M)}</strong>
+              </div>
+              <div className="route-panel__time-row">
+                <span>Max cell slope</span>
+                <strong>{metrics.maxSlopeDeg.toFixed(1)}°</strong>
+              </div>
+              <div className="route-panel__time-row">
+                <span>Above both ends</span>
+                <strong>
+                  {metrics.highestAboveEnds >= 0 ? '+' : ''}
+                  {metrics.highestAboveEnds.toFixed(0)} m
+                </strong>
+              </div>
+              <div className="route-panel__time-row">
+                <span>Cliff-adjacent cells</span>
+                <strong>{metrics.cliffCells}</strong>
+              </div>
+              <div className={`terrain-verdict is-${terrainRisk.level}`}>
+                {terrainRisk.label}
+              </div>
+              <div className="route-panel__model-note">
+                The route adds a soft cost penalty above{' '}
+                {ASSUMPTIONS.routeSteepPenaltyStartDeg.value}°; cells above{' '}
+                {MAX_SLOPE}° are blocked.
+              </div>
+              {metrics.highestAboveEnds > ASSUMPTIONS.routeRidgeWarningM.value && (
+                <div className="route-panel__warning">
+                  The route climbs over a ridge: the highest point is{' '}
+                  {metrics.highestAboveEnds.toFixed(0)} m above both endpoints.
+                </div>
+              )}
             </section>
           )}
 
           {route && (
             <div className="route-legend" aria-label="Route legend">
               <span><i className="route-legend__line is-planned" /> planned route</span>
-              <span><i className="route-legend__line is-unsafe" /> unsafe</span>
+              <span><i className="route-legend__line is-steep" /> steep &gt;20°</span>
+              <span><i className="route-legend__line is-unsafe" /> no return</span>
               <span><i className="route-legend__line is-emergency" /> emergency return</span>
             </div>
           )}
 
           {metrics && (
-            <div className="route-panel__metrics">
-              <div className="route-metric">
-                <span>Distance</span>
-                <strong>{(metrics.totalM / 1000).toFixed(2)} km</strong>
-              </div>
-              <div className="route-metric">
-                <span>Ascent</span>
-                <strong>{metrics.ascentM.toFixed(0)} m</strong>
-              </div>
-              <div className="route-metric">
-                <span>Descent</span>
-                <strong>{metrics.descentM.toFixed(0)} m</strong>
-              </div>
-              <div className="route-metric">
-                <span>Max slope</span>
-                <strong>{metrics.maxSlopeDeg.toFixed(1)}°</strong>
-              </div>
-              <div className="route-metric">
-                <span>Walking time</span>
-                <strong>{formatDuration(metrics.timeSeconds)}</strong>
-              </div>
-              <div className="route-panel__assumption">
-                Suit speed factor {SUIT_FACTOR}{' '}
-                <span className="badge badge--assumed">assumed</span>
-              </div>
-               <ElevationProfile
-                 profile={metrics.profile}
-                 safety={effort?.safety}
-                 stopIndices={stopIndices}
-                 currentIndex={positionIndex}
-                 onSelect={(index) => setPositionPercent((index / Math.max(1, route.length - 1)) * 100)}
-               />
+            <div className="route-profile-section">
+              <ElevationProfile
+                profile={metrics.profile}
+                safety={effort?.safety}
+                stopIndices={stopIndices}
+                currentIndex={positionIndex}
+                onSelect={(index) => setPositionPercent((index / Math.max(1, route.length - 1)) * 100)}
+              />
+              <button
+                type="button"
+                className="route-panel__fit"
+                onClick={() => fitRoute(route)}
+              >
+                Fit route on map
+              </button>
             </div>
           )}
 

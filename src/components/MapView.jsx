@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import { LANDING_MARKER_STYLE, LAYERS, MAP_VIEW } from '../config/layers.js';
 import { LANDING_SITE } from '../lib/marsGeo.js';
+import { getMapFitPadding } from '../lib/mapFit.js';
 import { useMap } from '../context/MapContext.jsx';
 import { useRoute } from '../context/RouteContext.jsx';
 
@@ -9,7 +10,7 @@ const warnedMissingUrl = new Set();
 const warnedTileError = new Set();
 const COVERAGE_NOTE = 'Jezero detail layers only cover the crater area.';
 
-export default function MapView() {
+export default function MapView({ layoutKey }) {
   const containerRef = useRef(null);
   const mapRef = useRef(null);
   const { setMap, setLayers } = useMap();
@@ -18,6 +19,7 @@ export default function MapView() {
   const [status, setStatus] = useState([]);
   const [overview, setOverview] = useState(false);
   const viewRef = useRef(null);
+  const overviewRef = useRef(false);
 
   // Keep the first loaded grid object. RouteContext re-renders when stops,
   // routes or walkback state change; none of those may recreate the map.
@@ -181,16 +183,14 @@ export default function MapView() {
     };
 
     const fitGrid = () => {
-      const sidebar = container.closest('.map-shell')?.querySelector('.route-panel');
-      const sidebarWidth = sidebar?.getBoundingClientRect().width || 0;
       map.fitBounds(gridBounds, {
-        padding: [20, 20],
-        paddingTopLeft: [sidebarWidth + 20, 20],
+        ...getMapFitPadding(map),
         animate: false,
       });
     };
 
     const enterOverview = () => {
+      overviewRef.current = true;
       overviewActive = true;
       setOverview(true);
       map.setMaxBounds(worldBounds);
@@ -199,6 +199,7 @@ export default function MapView() {
     };
 
     const leaveOverview = () => {
+      overviewRef.current = false;
       overviewActive = false;
       setOverview(false);
       map.setMaxBounds(paddedBounds);
@@ -206,7 +207,7 @@ export default function MapView() {
       updateMinZoom();
     };
 
-    viewRef.current = { enterOverview, leaveOverview };
+    viewRef.current = { enterOverview, leaveOverview, fitGrid };
     map.on('resize', updateMinZoom);
     rafId = requestAnimationFrame(() => {
       if (disposed) return;
@@ -229,6 +230,19 @@ export default function MapView() {
       setMap(null);
     };
   }, [mapGrid, setLayers, setMap]);
+
+  // Desktop sidebar collapse or compact/desktop breakpoint changes alter the
+  // usable map area without changing the map element size. Refit the grid once
+  // the new layout has painted.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return undefined;
+    const frame = requestAnimationFrame(() => {
+      map.invalidateSize();
+      if (!overviewRef.current) viewRef.current?.fitGrid();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [layoutKey]);
 
   const showCoverageNote = status.some((row) => row.id.startsWith('m20-'));
   const debug =

@@ -195,6 +195,44 @@ export const SOURCES = [
     verification: 'Versions checked on 2026-11-14 (see used.txt).',
   },
   {
+    id: 'wcag-target-size',
+    category: 'reference',
+    name: 'W3C WCAG 2.2 - Target Size (Minimum and Enhanced)',
+    institution: 'World Wide Web Consortium (W3C)',
+    url: 'https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum.html',
+    license: 'W3C Document License',
+    citation:
+      'WCAG 2.2 success criteria 2.5.8 (24 px minimum) and 2.5.5 (44 px enhanced).',
+    use: 'Compact layout touch targets: 44 px route buttons, form controls and expanded hit areas for text links.',
+    verification:
+      'Checked 2026-11-15: the 44 px value is the enhanced target size; 24 px is the AA minimum. The compact layout audit measured every visible route button at 44 px.',
+  },
+  {
+    id: 'mdn-responsive-css',
+    category: 'reference',
+    name: 'MDN Web Docs - CSS environment variables, pointer media query, dynamic viewport units and Pointer Events',
+    institution: 'Mozilla and individual contributors',
+    url: 'https://developer.mozilla.org/en-US/docs/Web/CSS/env',
+    license: 'CC-BY-SA 2.5',
+    citation:
+      'Used env(safe-area-inset-*), @media (pointer: coarse), 100dvh, touch-action and the Pointer Events API.',
+    use: 'Bottom-sheet layout, safe-area padding, compact viewport sizing, touch target rules and the draggable elevation profile.',
+    verification:
+      'Checked 2026-11-15 in MDN; verified in Chrome 147 at 320-1280 px widths and with touch emulation.',
+  },
+  {
+    id: 'chrome-headless',
+    category: 'tool',
+    name: 'Google Chrome (headless) and Chrome DevTools Protocol',
+    version: '147.0.7727.55',
+    institution: 'Google',
+    url: 'https://developer.chrome.com/docs/chromium/headless',
+    license: 'Proprietary',
+    use: 'Responsive layout verification at 320, 390, 820, 1023, 1024 and 1280 px, touch emulation, screenshots and console/runtime error checks.',
+    verification:
+      'Chrome 147.0.7727.55 run on 2026-11-15; no page errors in the audited layouts.',
+  },
+  {
     id: 'preprocess-stack',
     category: 'tool',
     name: 'Python preprocessing stack',

@@ -72,6 +72,8 @@ export default function ConditionsPanel({ compact = false }) {
           className={`conditions-chip ${statusClass(overall)}`}
           onClick={() => setOpen((value) => !value)}
           aria-expanded={open}
+          aria-label={`Conditions: ${overall}. EVA window minimum ${temperature.evaWindow.minC.toFixed(1)} degrees Celsius, sol ${temperature.sol}. Open details.`}
+          title={`EVA window min ${temperature.evaWindow.minC.toFixed(1)} °C · Sol ${temperature.sol}`}
         >
           <strong>{overall}</strong>
           <span>

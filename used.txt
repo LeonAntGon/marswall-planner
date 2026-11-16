@@ -305,3 +305,24 @@ WHERE FROM: Existing app features and user-specified UX/UI requirements
 HOW VERIFIED: Manual route with landing site start and one Séítah stop produced 4.33 km, 1 h 51 min walking, 30 min stop time, 3 h 42 min round trip, 1,385 kJ and 68.9 L O2, with no errors. Responsive checks at 1366x1080 and 1920x1080 had body width equal to viewport. Bright Angel preset at 50% showed 70 unsafe red segments; comparison, emergency NOT ENOUGH, cancel, traverse toggle, basemap radios, conditions drawer and Data & Credits all passed. No console/page errors.
 USED IN: src/App.jsx, src/components/RoutePanel.jsx, src/components/MapLayersPanel.jsx, src/components/ConditionsPanel.jsx, src/styles.css
 NOTE: Tiers 1-4 complete. No git commands were run.
+
+[2026-11-15 22:13] FEATURE: F1/F4/F7/F12 responsive layout
+WHAT: Compact bottom-sheet planner, responsive topbar, reachable zoom, collapsed layers, 44 px touch targets, safe-area and dvh sizing, pointer-drag elevation profile, mobile science dots, full-screen modals and a responsive credits table
+WHERE FROM: W3C WCAG 2.2 target size (https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum.html); MDN CSS env() (https://developer.mozilla.org/en-US/docs/Web/CSS/env), pointer media query (https://developer.mozilla.org/en-US/docs/Web/CSS/@media/pointer), dvh (https://developer.mozilla.org/en-US/docs/Web/CSS/length#dvh) and Pointer Events (https://developer.mozilla.org/en-US/docs/Web/API/Pointer_events); breakpoints 1023/899/767/359 px are project decisions
+HOW VERIFIED: npm run build; Chrome 147 headless audit at 320x640, 390x844, 820x1180, 1023x768, 1024x768 and 1280x800. No horizontal overflow; 56-57 px compact topbar; sheet detents 60/56dvh/92dvh; every visible route button 44 px at 390; zoom anchor 44 px and hit-testable; attribution moved above the 60 px peek sheet; credits table 362/362 at 390; science card and credits full-screen with a 44 px close; touch emulation at 390; no page/runtime errors.
+USED IN: src/App.jsx, src/styles.css, src/lib/useMediaQuery.js, src/lib/mapFit.js, src/components/MapView.jsx, src/components/MapLayersPanel.jsx, src/components/ScienceStops.jsx, src/components/ConditionsPanel.jsx, src/components/RoutePanel.jsx, src/components/Credits.jsx, src/config/sources.js
+NOTE: No new npm dependencies. sources.js now has 27 entries (24 + WCAG, MDN and headless Chrome). The old 720 px override that placed the route panel over the map was removed.
+
+[2026-11-15 22:14] FEATURE: F3/F4 route terrain safety
+WHAT: Soft steep-slope cost penalty, diagonal corner guard, tap snap to the nearest walkable cell, terrain risk metrics (steepest step, length above 20/30 deg, highest point above endpoints, cliff-adjacent cells) and amber steep segments in the map and elevation profile
+WHERE FROM: own assumptions routeSteepPenaltyStartDeg = 15 deg, routeSteepPenaltyWeight = 2, routeRidgeWarningM = 25 m and mapClickSnapM = 60 m in src/config/assumptions.js; corner-cutting rule from Red Blob Games (https://www.redblobgames.com/pathfinding/a-star/implementation.html)
+HOW VERIFIED: Node audit on the D1 600x600 grid with the production findPath. Presets unchanged: Three Forks 2.59 km, ascent 47 m, max step 6.6 deg; Bright Angel 10.23 km, ascent 297 m, max step 10.8 deg. 60 random pairs: max step 29.1 -> 23.4 deg, max length above 20 deg 339 -> 80 m, average length 5.73 km unchanged, 0 failures. npm test 9/9 (new tests: corner guard, penalty cost, map snap). Chrome 147 route at 390 and 1280 px shows the terrain block, profile and route fit.
+USED IN: src/lib/astar.worker.js, src/lib/gridData.js, src/components/RoutePanel.jsx, src/config/assumptions.js, tests/astar.test.js
+NOTE: F8 rover comparison was not re-run because the preset routes are unchanged; rerun it if the penalty constants change.
+
+[2026-11-15 22:15] FEATURE: F12 / page metadata
+WHAT: Open Graph and Twitter Card metadata pointing at public/og-image.jpeg (1280x720 JPEG, 205,093 B)
+WHERE FROM: Open Graph protocol (https://ogp.me/) and X Cards markup (https://developer.x.com/en/docs/x-for-websites/cards/overview/markup); the image is the team's own asset in the working tree
+HOW VERIFIED: dist/og-image.jpeg is copied by Vite; dist/index.html contains og:image, og:image:width/height/type/alt and twitter:card summary_large_image; image dimensions checked with Pillow (1280x720 RGB)
+USED IN: index.html, public/og-image.jpeg
+NOTE: og:image and twitter:image use the relative path /og-image.jpeg. Some crawlers require an absolute URL; replace it after a deployment domain exists. Do not invent a URL (TODO comment in index.html).

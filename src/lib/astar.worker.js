@@ -1,7 +1,11 @@
 // F3 - A* route planner Web Worker.
 // The pure findPath() function is also exported so it can be tested in Node.
 
+import { ASSUMPTIONS } from '../config/assumptions.js';
+
 const V_FLAT_KMH = 6 * Math.exp(-3.5 * 0.05);
+const STEEP_PENALTY_START_DEG = ASSUMPTIONS.routeSteepPenaltyStartDeg.value;
+const STEEP_PENALTY_WEIGHT = ASSUMPTIONS.routeSteepPenaltyWeight.value;
 const DIRS = [
   [1, 0],
   [-1, 0],
@@ -103,6 +107,9 @@ export function findPath({
   start,
   goal,
   maxSlopeDeg = 30,
+  steepPenaltyStartDeg = STEEP_PENALTY_START_DEG,
+  steepPenaltyWeight = STEEP_PENALTY_WEIGHT,
+  blockCorners = true,
 }) {
   if (!rows || !cols || !bounds || !cellSizeMeters || !slope) {
     return { error: 'The route grid is incomplete.' };
@@ -198,7 +205,20 @@ export function findPath({
       }
       const nextIdx = nextRow * cols + nextCol;
       if (closed[nextIdx]) continue;
-      if (blocked(slope[nextIdx], nodata, maxSlopeDeg)) continue;
+      const nextSlope = slope[nextIdx];
+      if (blocked(nextSlope, nodata, maxSlopeDeg)) continue;
+
+      // Do not squeeze diagonally between two blocked cells: that would let a
+      // route cross a cliff edge that the 8-neighbour grid otherwise blocks.
+      if (
+        blockCorners &&
+        nextCol !== col &&
+        nextRow !== row &&
+        (blocked(slope[row * cols + nextCol], nodata, maxSlopeDeg) ||
+          blocked(slope[nextRow * cols + col], nodata, maxSlopeDeg))
+      ) {
+        continue;
+      }
 
       const step =
         DIRS[i][0] === 0 || DIRS[i][1] === 0
@@ -206,8 +226,13 @@ export function findPath({
             ? dx
             : dy
           : Math.hypot(dx, dy);
-      const tentative =
-        gScore[current] + step * toblerCostFactor(slope[nextIdx]);
+      let costFactor = toblerCostFactor(nextSlope);
+      if (steepPenaltyWeight > 0 && nextSlope > steepPenaltyStartDeg) {
+        const span = Math.max(1e-6, maxSlopeDeg - steepPenaltyStartDeg);
+        const t = Math.min(1, (nextSlope - steepPenaltyStartDeg) / span);
+        costFactor *= 1 + steepPenaltyWeight * t * t;
+      }
+      const tentative = gScore[current] + step * costFactor;
       if (tentative + 1e-9 < gScore[nextIdx]) {
         gScore[nextIdx] = tentative;
         cameFrom[nextIdx] = current;

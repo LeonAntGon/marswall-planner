@@ -1,18 +1,27 @@
 import { useEffect, useState } from 'react';
 import L from 'leaflet';
 import { useMap } from '../context/MapContext.jsx';
+import {
+  COMPACT_QUERY,
+  COARSE_POINTER_QUERY,
+  useMediaQuery,
+} from '../lib/useMediaQuery.js';
 import ScienceCard from './ScienceCard.jsx';
 
-const OFFSETS = {
-  maaz: [26, 4],
-  seitah: [4, 26],
-  'delta-front': [19, 19],
-  'three-forks': [3, 3],
-  'bright-angel': [-8, 11],
+/** Vertical label offsets used to separate the two stops near Three Forks. */
+const LABEL_Y = {
+  maaz: 16,
+  seitah: -14,
+  'delta-front': -24,
+  'three-forks': 20,
+  'bright-angel': -18,
 };
 
 export default function ScienceStops() {
   const { map } = useMap();
+  const isCompact = useMediaQuery(COMPACT_QUERY);
+  const coarse = useMediaQuery(COARSE_POINTER_QUERY);
+  const showLabels = !isCompact && !coarse;
   const [stops, setStops] = useState([]);
   const [selected, setSelected] = useState(null);
   const [error, setError] = useState(null);
@@ -49,30 +58,45 @@ export default function ScienceStops() {
 
     stops.forEach((feature, index) => {
       const properties = feature.properties;
-      const offset = OFFSETS[properties.id] || [11, 11];
-      const icon = L.divIcon({
-        className: 'science-marker',
-        html: `<span class="science-marker__dot" style="background:${properties.color}">${index + 1}</span><span class="science-marker__label">${properties.name}</span>`,
-        iconSize: [190, 22],
-        iconAnchor: offset,
+      const latlng = [properties.lat, properties.lon];
+      const size = coarse ? 44 : 34;
+      const dotIcon = L.divIcon({
+        className: 'science-dot-marker',
+        html: `<span class="science-dot-marker__dot" style="background:${properties.color}">${index + 1}</span>`,
+        iconSize: [size, size],
+        iconAnchor: [size / 2, size / 2],
       });
-      const marker = L.marker([properties.lat, properties.lon], {
-        icon,
+      L.marker(latlng, {
+        icon: dotIcon,
         title: `${properties.name} · sol ${properties.solUsed}`,
         riseOnHover: true,
-      }).addTo(group);
-      marker
+      })
+        .addTo(group)
         .bindTooltip(`${properties.name} · sol ${properties.solUsed}`, {
           direction: 'top',
-          offset: [0, -8],
+          offset: [0, -10],
         })
         .on('click', () => setSelected(properties));
+
+      if (showLabels) {
+        const labelIcon = L.divIcon({
+          className: 'science-label-marker',
+          html: `<span class="science-marker__label">${properties.name}</span>`,
+          iconSize: [190, 22],
+          iconAnchor: [0, 11 + (LABEL_Y[properties.id] ?? 0)],
+        });
+        L.marker(latlng, {
+          icon: labelIcon,
+          interactive: false,
+          keyboard: false,
+        }).addTo(group);
+      }
     });
 
     return () => {
       group.remove();
     };
-  }, [map, stops]);
+  }, [map, stops, showLabels, coarse]);
 
   return (
     <>
